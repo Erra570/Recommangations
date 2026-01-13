@@ -1,5 +1,5 @@
-# Recommangations
-Projet DevOps / Algorithme de recommandation d'anime et de mangas
+# RecoMangaTions
+Projet DevOps / Algorithme de recommandation d'animes et de mangas
 ##Requetes GraphQL
 ```
 query ($id: Int) {
