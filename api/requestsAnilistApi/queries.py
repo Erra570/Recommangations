@@ -1,3 +1,8 @@
+###
+# Queries graphql testées dans le sandbox https://studio.apollographql.com/sandbox/explorer
+#
+###
+
 QUERY_USER_ID = """
 query ($username: String) {
   User(name: $username) {
