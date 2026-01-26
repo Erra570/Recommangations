@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 RUN apt-get update
-# On retire les fichiers temporaires :
+#  On retire les fichiers temporaires :
 RUN rm -rf /var/lib/apt/lists/* 
 
 WORKDIR /app
