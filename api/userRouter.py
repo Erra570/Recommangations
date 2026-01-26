@@ -2,17 +2,14 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from requestsAnilistApi import (
     fetch_user_id,
+    fetch_user_favorites_list,
+    fetch_user_entries_list,
+
     fetch_user_anime_list,
-    fetch_user_manga_list,
+    fetch_user_manga_list,    
 )
 
 router = APIRouter()
-
-#region CLASSES
-class UserResponse(BaseModel):
-    user_id: int
-    username: str
-#endregion
 
 #region FastAPI requests
 @router.get("/{username}")
@@ -20,7 +17,22 @@ async def get_user_id(username: str):
     user = await fetch_user_id(username)
     return {"user_id": user["id"], "username": user["name"]}
 
+@router.get("/{username}/favorites")
+async def get_user_favorites(username: str):
+    user = await fetch_user_id(username)  
+    return await fetch_user_favorites_list(user["id"])
 
+@router.get("/{username}/entries/{mediaType}")
+async def get_user_entries(username: str, mediaType: str):
+    user = await fetch_user_id(username)  
+    return await fetch_user_entries_list(user["id"], mediaType)
+
+
+
+
+
+# Pas sûr qu'ils soient utilisés : 
+# TODO : maybe delete
 @router.get("/{username}/list/anime")
 async def get_user_anime_list(username: str):
     return await fetch_user_anime_list(username)

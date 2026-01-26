@@ -15,7 +15,7 @@ async def health_check():
 
 
 
-#region Basic Requests :
+#region - - - Basic Requests :
 @app.get("/")
 async def read_root():
     return {"message": "Root."}
@@ -24,13 +24,11 @@ async def read_root():
 @app.get("/health", tags=["Health"])
 async def health_check_root():
     return {"status": "ok"}
-
-
 #endregion
 
 
 
-#region Autres routers :
+#region - - - Autres routers :
 api_router.include_router(user_router, prefix="/user", tags=["UserRequests"])
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics") # Prometheus metrics (ex: /metrics)

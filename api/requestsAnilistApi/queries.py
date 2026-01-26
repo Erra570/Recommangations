@@ -12,6 +12,74 @@ query ($username: String) {
 }
 """
 
+# Récupère la liste des medias favoris de l'user (en Ids)
+QUERY_USER_GET_FAVORITES = """
+query User($userId: Int) {
+  User(id: $userId) {
+    favourites {
+      manga {
+        nodes {
+          id
+        }
+      }
+      anime {
+        nodes {
+          id
+        }
+      }
+    }
+  }
+}
+"""
+
+# Récupère les Oeuvres (tout types) enregistrés sur le profile de l'User, avec : 
+# id oeuvre 
+# note de l'user sur l'oeuvre
+# nb chapitres lus
+# statut de l'oeuvre (dropped, paused, etc)
+# dates ( lastUpdate, finished date, start date )
+# nb de repeats
+QUERY_USER_GET_ENTRIES = """
+query UserMediaList(
+  $userId: Int,
+  $type: MediaType
+) {
+  MediaListCollection(userId: $userId, type: $type) {
+    lists {
+      entries {
+        media {
+          id
+        }
+        score
+        progress
+        status
+        repeat
+        updatedAt
+        completedAt {
+          month
+          year
+          day
+        }
+        startedAt {
+          month
+          year
+          day
+        }
+      }
+    }
+  }
+}
+"""
+
+
+
+
+
+
+
+# Pas sûr qu'ils soient utilisés : 
+# TODO : maybe delete
+
 QUERY_USER_LIST_ANIME = """
 query ($page: Int, $perPage: Int, $sort: [MediaSort]) {
   Page(page: $page, perPage: $perPage) {
