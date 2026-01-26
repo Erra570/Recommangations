@@ -2,8 +2,11 @@ from fastapi import APIRouter, FastAPI, HTTPException
 import httpx
 from pydantic import BaseModel
 from prometheus_fastapi_instrumentator import Instrumentator
-
-
+from anilist import (
+    fetch_user_id,
+    fetch_user_anime_list,
+    fetch_user_manga_list,
+)
 #region CLASSES
 class UserResponse(BaseModel):
     user_id: int
@@ -38,7 +41,20 @@ router = APIRouter(prefix="/api")
 @app.get("/")
 async def read_root():
     return {"message": "Root."}
+@router.get("/user/{username}")
+async def get_user(username: str):
+    user = await fetch_user_id(username)
+    return {"user_id": user["id"], "username": user["name"]}
 
+
+@router.get("/user/{username}/list/anime")
+async def user_anime_list(username: str):
+    return await fetch_user_anime_list(username)
+
+
+@router.get("/user/{username}/list/manga")
+async def user_manga_list(username: str):
+    return await fetch_user_manga_list(username)
 
 # Health root (utile pour docker-compose si le healthcheck tape /health)
 @app.get("/health", tags=["Health"])
