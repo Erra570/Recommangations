@@ -58,15 +58,32 @@ async def get_user_id(username: str):
             }
         }
     """
+    variables = {"username": username}
+
     try:
-        # .....
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                ANILIST_API_URL,
+                json={"query": query, "variables": variables},
+                headers={"Content-Type": "application/json", "Accept": "application/json"},
+            )
+            response.raise_for_status()
+            payload = response.json()
 
-
-
-
-
-
-
+        if "errors" in payload and payload["errors"]:
+            raise HTTPException(
+                status_code=404,
+                detail=payload["errors"][0].get("message", "Anilist API error")
+            )
+        
+        user = payload.get("data", {}).get("User")
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+        
+        return UserResponse(user_id=user["id"], username=user["name"])
 
         response =""
     except httpx.HTTPError as e:
@@ -84,3 +101,4 @@ async def get_user_id(username: str):
 
 
 app.include_router(router)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
