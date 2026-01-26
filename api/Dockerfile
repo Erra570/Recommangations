@@ -1,7 +1,11 @@
 FROM python:3.11-slim
 
 RUN apt-get update
+<<<<<<< HEAD
 # On retire les fichiers temporaires :
+=======
+#  On retire les fichiers temporaires :
+>>>>>>> f985981 (appel graphql)
 RUN rm -rf /var/lib/apt/lists/* 
 
 WORKDIR /app
