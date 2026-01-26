@@ -4,3 +4,6 @@ httpx
 pydantic
 prometheus-fastapi-instrumentator
 prometheus-client
+sqlalchemy
+psycopg[binary]
+alembic
