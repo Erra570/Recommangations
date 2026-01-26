@@ -7,111 +7,92 @@ query ($username: String) {
 }
 """
 
-QUERY_USER_LIST_ANIME = """
-query ($page: Int, $perPage: Int, $sort: [MediaSort]) {
-  Page(page: $page, perPage: $perPage) {
+QUERY_LIST_ANIME = """
+query($page: Int) {
+  Page(page: $page, perPage: 50) {
     pageInfo {
+      total
       currentPage
+      lastPage
       hasNextPage
     }
-    media(type: ANIME, sort: $sort) {
+    media(type: ANIME, sort: UPDATED_AT_DESC, status_not: NOT_YET_RELEASED) {
       id
-
-      averageScore
-      favourites
-      episodes
-      format
+      title {
+				romaji
+        english
+      }
       countryOfOrigin
-      status
-
+      format
       startDate {
         day
         month
         year
       }
-
-      genres
-
+      stats {
+        scoreDistribution {
+          score
+          amount
+        }
+        statusDistribution {
+          status
+          amount
+        }
+      }
+      status
       tags {
         id
         rank
       }
-
+      favourites
+      staff(sort: RELEVANCE) {
+        nodes {
+          id
+        }
+        edges {
+          role
+        }
+      }
+      updatedAt
+      genres
       studios(isMain: true) {
         nodes {
           id
         }
       }
-
-      staff(sort: RELEVANCE, perPage: 5) {
-        nodes {
-          id
-        }
-        edges {
-          role
-        }
+      episodes
+      coverImage {
+        large
       }
-
-      stats {
-        scoreDistribution {
-          score
-          amount
-        }
-        statusDistribution {
-          status
-          amount
-        }
-      }
-
-      title {
-        romaji
-        english
-      }
+      isAdult
     }
   }
 }
 """
 
-QUERY_USER_LIST_MANGA = """
-query ($page: Int, $perPage: Int, $sort: [MediaSort]) {
-  Page(page: $page, perPage: $perPage) {
+QUERY_LIST_MANGA = """
+query($page: Int) {
+  Page(page: $page, perPage: 50) {
     pageInfo {
+      total
       currentPage
+      lastPage
       hasNextPage
     }
-    media(type: MANGA, sort: $sort) {
+    media(type: MANGA, sort: UPDATED_AT_DESC, status_not: NOT_YET_RELEASED) {
       id
-
-      averageScore
       chapters
-      volumes
+      title {
+	      romaji
+        english
+      }
       countryOfOrigin
       format
-      status
-      favourites
-
       startDate {
         day
         month
         year
       }
-
-      genres
-
-      tags {
-        id
-        rank
-      }
-
-      staff(sort: RELEVANCE, perPage: 5) {
-        nodes {
-          id
-        }
-        edges {
-          role
-        }
-      }
-
       stats {
         scoreDistribution {
           score
@@ -122,11 +103,26 @@ query ($page: Int, $perPage: Int, $sort: [MediaSort]) {
           amount
         }
       }
-
-      title {
-        romaji
-        english
+      status
+      tags {
+        id
+        rank
       }
+      favourites
+      staff(sort: RELEVANCE) {
+        nodes {
+          id
+        }
+        edges {
+          role
+        }
+      }
+      genres
+      updatedAt
+      coverImage {
+        large
+      }
+      isAdult
     }
   }
 }
