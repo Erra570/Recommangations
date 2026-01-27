@@ -21,7 +21,14 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - recoMangaTion-network  
+      - recoMangaTion-network
+  web:
+    build: ./web
+    ports:
+      - "5174:80"
+    depends_on:
+      - api
+  
   # Service Database (PostgreSQL)
   db:
     image: postgres:16
@@ -50,7 +57,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     ports:
-      - 9090:9090
+      - 9092:9090
     restart: unless-stopped
     networks:
       - monitoring
