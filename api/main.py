@@ -1,16 +1,19 @@
 from fastapi import APIRouter, FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi.staticfiles import StaticFiles
 from userRouter import router as user_router 
-
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-#on cherche le dossier web qui est dans le dossier api/
-app.mount("/ui", StaticFiles(directory="web", html=True), name="web")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Health sous /api :
 @api_router.get("/health", tags=["Health"])
 async def health_check():

@@ -9,7 +9,7 @@ services:
       - "8001:8000"
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql+asyncpg://api:api@db:5432/db_anilist
+      - DATABASE_URL=postgresql+psycopg://api:api@db:5432/db_anilist
     depends_on:
       db:
         condition: service_healthy
@@ -21,7 +21,14 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - recoMangaTion-network  
+      - recoMangaTion-network
+  web:
+    build: ./web
+    ports:
+      - "5174:80"
+    depends_on:
+      - api
+  
   # Service Database (PostgreSQL)
   db:
     image: postgres:16
@@ -38,6 +45,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+    - recoMangaTion-network 
   # Service Frontend Web
   # maybe later, , ,
 
@@ -48,7 +57,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     ports:
-      - 9090:9090
+      - 9092:9090
     restart: unless-stopped
     networks:
       - monitoring

@@ -9,6 +9,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # COPIE TOUT le code (main.py + anilist/ + web/)
 COPY . .
+COPY alembic.ini .
+COPY alembic ./alembic
+
 
 EXPOSE 8000
 

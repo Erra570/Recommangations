@@ -28,9 +28,9 @@ async def get_user_entries(username: str, mediaType: str):
     return await fetch_user_entries_list(user["id"], mediaType)
 
 
-@router.get("/{username}/list/anime")
-async def get_user_anime_list(username: str):
-    return await fetch_anime_list(username)
+@router.get("/list/anime")
+async def get_user_anime_list():
+    return await fetch_anime_list()
 
 
 @router.get("/list/manga")

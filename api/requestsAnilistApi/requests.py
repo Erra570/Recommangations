@@ -6,6 +6,7 @@ import os.path
 import re
 from .mapper import *
 from repository.anilistImport import *
+from datetime import datetime
 
 from .queries import (
     QUERY_USER_ID,
@@ -36,6 +37,7 @@ async def anilist_post(query: str, variables: dict):
 
     return payload["data"]
 
+#region formatting
 def list_processing(list: dict):
     #patern for match staff 
     pattern = re.compile("^[Story|Art|Story & Art|Original Story|Original Creator|Director].*$")
@@ -110,8 +112,47 @@ def list_processing(list: dict):
 
     return medias
 
-# ----------------
+# listMedia est soit la liste des media MANGA, soit ANIME (pas les 2)
+def list_processing_user_infos(listMedia: dict, listFav: dict, mediaType = "manga"):
+    formatted_list = []
 
+    # Booléens des oeuvres mises en favories :
+    tmp = listFav["User"]["favourites"][mediaType]["nodes"]
+    fav_ids = {node["id"] for node in tmp}
+
+    oeuvres = listMedia["MediaListCollection"]["lists"]      
+    for list_by_entriesStatus in oeuvres:
+        tmp_list = list_by_entriesStatus["entries"] # 1ère list des entries : COMPLETED, 2e : PAUSED, etc.
+
+        for item in tmp_list:
+            # Date :
+            if item["updatedAt"] != 0 :
+                tmp = datetime.fromtimestamp(item["updatedAt"])
+                date = str(tmp.day)+"-"+str(tmp.month)+"-"+str(tmp.year)
+            elif item["completedAt"]["month"] is None:
+                date = str(item["completedAt"]["day"])+"-"+str(item["completedAt"]["month"])+"-"+str(item["completedAt"]["year"])
+            else :
+                date = str(item["startDate"]["day"])+"-"+str(item["startDate"]["month"])+"-"+str(item["startDate"]["year"])
+            
+            isFavorite = item["media"]["id"] in fav_ids
+            # Other infos :
+            formatted_entry = {
+                "id": item["media"]["id"],
+                "isFavorite": isFavorite, 
+                "status": item["status"],
+                "score": item["score"],
+                "progress": item["progress"],
+                "repeat": item["repeat"],
+                "date": date
+            }
+
+            a=item["media"]["id"]
+            # print(f"- - -Id : {a}")
+            formatted_list.append(formatted_entry) 
+    return formatted_list
+#endregion
+
+#region fetches
 async def fetch_user_id(username: str):
     data = await anilist_post(QUERY_USER_ID, {"username": username})
     user = data.get("User")
@@ -122,12 +163,28 @@ async def fetch_user_id(username: str):
 async def fetch_user_favorites_list(userId: int):
     return await anilist_post(QUERY_USER_GET_FAVORITES, {"userId": userId})
 
-
 async def fetch_user_entries_list(userId: int, mediaType: str):
+    mediaType = mediaType.upper()
     if mediaType not in MEDIA_TYPE:
         raise HTTPException(status_code=404, detail=f"Type {mediaType} inconnu. Liste des types : {MEDIA_TYPE}")
-    return await anilist_post(QUERY_USER_GET_ENTRIES, {"userId": userId, "type": mediaType})
+    if os.path.isfile("./../../data/tmp/userInfos.json"):
+        try:
+            with open("./../../data/tmp/userInfos.json", "r") as f:
+                return json.load(f)
+        except ValueError:
+            print("userInfos.json corrupted.")
 
+    print("Fetch user data from Anilist...")
+    listMedia = await anilist_post(QUERY_USER_GET_ENTRIES, {"userId": userId, "type": mediaType})
+    listFav = await anilist_post(QUERY_USER_GET_FAVORITES, {"userId": userId})
+
+    print("Decode data from Anilist...")
+    formatted = list_processing_user_infos(listMedia, listFav, mediaType.lower())
+    
+    os.makedirs("./../../data/tmp", exist_ok=True)
+    with open("./../../data/tmp/userInfos.json", "w") as f:
+        json.dump(formatted, f, indent=2)
+    return listMedia
 
 async def fetch_list(list_name, list_query):
     """if os.path.isfile("./../../data/tmp/"+list_name+".json"):

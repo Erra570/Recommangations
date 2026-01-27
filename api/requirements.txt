@@ -7,4 +7,6 @@ prometheus-client
 sqlalchemy
 psycopg[binary]
 alembic
+asyncpg
 numpy
+datetime

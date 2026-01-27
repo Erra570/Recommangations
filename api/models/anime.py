@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, func, Float, Boolean
-from api.db import Base
+from db import Base
 
 class Anime(Base):
     __tablename__ = "anime"
