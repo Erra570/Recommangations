@@ -109,6 +109,7 @@ def QUERY_LIST_ANIME(sort = "UPDATED_AT_DESC"):
           tags {
             id
             rank
+            isMediaSpoiler
           }
           favourites
           staff(sort: RELEVANCE) {
@@ -174,6 +175,7 @@ def QUERY_LIST_MANGA(sort = "UPDATED_AT_DESC"):
           tags {
             id
             rank
+            isMediaSpoiler
           }
           favourites
           staff(sort: RELEVANCE) {

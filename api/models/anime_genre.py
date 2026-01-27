@@ -6,4 +6,4 @@ class AnimeGenre(Base):
     __tablename__ = "anime_genres"
 
     anime_id = Column(Integer, ForeignKey("anime.id"), primary_key=True)
-    genre_id = Column(Integer, ForeignKey("genres.id"), primary_key=True)
+    genre_name = Column(String, ForeignKey("genres.name"), primary_key=True)

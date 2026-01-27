@@ -33,7 +33,7 @@ async def get_user_anime_list(username: str):
     return await fetch_anime_list(username)
 
 
-@router.get("/{username}/list/manga")
-async def get_user_manga_list(username: str):
-    return await fetch_manga_list(username)
+@router.get("/list/manga")
+async def get_user_manga_list():
+    return await fetch_manga_list()
 #endregion

@@ -4,5 +4,4 @@ from api.db import Base
 class Genre(Base):
     __tablename__ = "genres"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, primary_key=True)

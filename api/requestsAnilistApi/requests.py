@@ -3,6 +3,9 @@ from fastapi import HTTPException
 import json
 import numpy as np
 import os.path
+import re
+from .mapper import *
+from repository.anilistImport import *
 
 from .queries import (
     QUERY_USER_ID,
@@ -34,6 +37,9 @@ async def anilist_post(query: str, variables: dict):
     return payload["data"]
 
 def list_processing(list: dict):
+    #patern for match staff 
+    pattern = re.compile("^[Story|Art|Story & Art|Original Story|Original Creator|Director].*$")
+
     medias = list["Page"]["media"]
     rm_list = []
     i = -1
@@ -82,8 +88,9 @@ def list_processing(list: dict):
             #staff processing
             media["staffs"] = []
             for i in range(len(media["staff"]["edges"])):
-                if media["staff"]["edges"][i]["role"] in ["Story", "Art", "Story & Art", "Original Story", "Original Creator", "Director"]:
-                    media["staffs"].append(media["staff"]["nodes"][i]["id"])
+                if pattern.match(media["staff"]["edges"][i]["role"]):
+                    staff = {"id": media["staff"]["nodes"][i]["id"], "role": media["staff"]["edges"][i]["role"]}
+                    media["staffs"].append(staff)
             media.pop("staff")
 
             #studio processing
@@ -122,51 +129,34 @@ async def fetch_user_entries_list(userId: int, mediaType: str):
     return await anilist_post(QUERY_USER_GET_ENTRIES, {"userId": userId, "type": mediaType})
 
 
-async def fetch_anime_list():
-    if os.path.isfile("./../../data/tmp/anime.json"):
+async def fetch_list(list_name, list_query):
+    """if os.path.isfile("./../../data/tmp/"+list_name+".json"):
         try:
-            with open("./../../data/tmp/anime.json", "r") as f:
+            with open("./../../data/tmp/"+list_name+".json", "r") as f:
                 return json.load(f)
         except ValueError:
-            print("anime.json currupted.")
+            print(list_name+".json currupted.")"""
 
-    print("Fetch anime data from Anilist...")
+    print("Fetch "+list_name+" data from Anilist...")
     i = 1
-    rep = await anilist_post(QUERY_LIST_ANIME("ID"), {"page": 0})
+    rep = await anilist_post(list_query("ID"), {"page": 0})
     rep_all = np.array(list_processing(rep))
     while rep["Page"]["pageInfo"]["hasNextPage"] and i < 10:
-        print("Fetch anime data from Anilist "+str(i)+"/???")
-        rep = await anilist_post(QUERY_LIST_ANIME("ID"), {"page": i})
+        print("Fetch "+list_name+" data from Anilist "+str(i)+"/???")
+        rep = await anilist_post(list_query("ID"), {"page": i})
         rep_all = np.concatenate((rep_all, np.array(list_processing(rep))))
         i += 1
     
-    print("Save manga data...")
+    print("Save "+list_name+" data...")
     rep_all = rep_all.tolist()
-    with open("./../../data/tmp/anime.json", "w") as f:
-        json.dump(rep_all, f, indent=2)
+    """with open("./../../data/tmp/"+list_name+".json", "w") as f:
+        json.dump(rep_all, f, indent=2)"""
+    insert_media(to_animes_entries(rep_all))
     return rep_all
+
+async def fetch_anime_list():
+    return await fetch_list("anime", QUERY_LIST_ANIME)
 
 
 async def fetch_manga_list():
-    if os.path.isfile("./../../data/tmp/manga.json"):
-        try:
-            with open("./../../data/tmp/manga.json", "r") as f:
-                return json.load(f)
-        except ValueError:
-            print("manga.json currupted.")
-
-    print("Fetch manga data from Anilist...")
-    i = 1
-    rep = await anilist_post(QUERY_LIST_MANGA("ID"), {"page": 0})
-    rep_all = np.array(list_processing(rep))
-    while rep["Page"]["pageInfo"]["hasNextPage"] and i < 10:
-        print("Fetch manga data from Anilist "+str(i)+"/???")
-        rep = await anilist_post(QUERY_LIST_MANGA("ID"), {"page": i})
-        rep_all = np.concatenate((rep_all, np.array(list_processing(rep))))
-        i += 1
-    
-    print("Save manga data...")
-    rep_all = rep_all.tolist()
-    with open("./../../data/tmp/manga.json", "w") as f:
-        json.dump(rep_all, f, indent=2)
-    return rep_all
+    return await fetch_list("manga", QUERY_LIST_MANGA)
