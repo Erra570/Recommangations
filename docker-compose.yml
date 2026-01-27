@@ -9,7 +9,7 @@ services:
       - "8001:8000"
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql+asyncpg://username:password@db:5432/db_anilist
+      - DATABASE_URL=postgresql+asyncpg://api:api@db:5432/db_anilist
     depends_on:
       db:
         condition: service_healthy
@@ -26,15 +26,15 @@ services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: api
+      POSTGRES_PASSWORD: api
       POSTGRES_DB: db_anilist
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U api -d recomangation"]
+      test: ["CMD-SHELL", "pg_isready -U api -d db_anilist"]
       interval: 5s
       timeout: 3s
       retries: 20

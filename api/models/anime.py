@@ -4,7 +4,7 @@ from api.db import Base
 class Anime(Base):
     __tablename__ = "anime"
 
-    id = Column(Integer, unique=True, nullable=False, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     cover_image = Column(String)
 
     title_romaji = Column(String)
