@@ -7,3 +7,4 @@ prometheus-client
 sqlalchemy
 psycopg[binary]
 alembic
+numpy

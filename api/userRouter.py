@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from requestsAnilistApi import (
+from requestsAnilistApi.requests import (
     fetch_user_id,
     fetch_user_favorites_list,
     fetch_user_entries_list,
 
-    fetch_user_anime_list,
-    fetch_user_manga_list,    
+    fetch_anime_list,
+    fetch_manga_list,    
 )
 
 router = APIRouter()

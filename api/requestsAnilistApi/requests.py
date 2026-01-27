@@ -4,7 +4,7 @@ import json
 import numpy as np
 import os.path
 
-from queries import (
+from .queries import (
     QUERY_USER_ID,
     QUERY_USER_GET_FAVORITES,
     QUERY_USER_GET_ENTRIES,
