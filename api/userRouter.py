@@ -1,5 +1,9 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+
+#Prometheus metrics :
+from time import perf_counter
+from metrics import ANIME_LIST_DURATION, USER_ID_REQUESTS 
+
 from requestsAnilistApi.requests import (
     fetch_user_id,
     fetch_user_favorites_list,
@@ -13,8 +17,9 @@ router = APIRouter()
 
 #region FastAPI requests
 @router.get("/{username}")
-async def get_user_id(username: str):
+async def get_user_id(username: str):    
     user = await fetch_user_id(username)
+    USER_ID_REQUESTS.inc() 
     return {"user_id": user["id"], "username": user["name"]}
 
 @router.get("/{username}/favorites")
@@ -30,7 +35,12 @@ async def get_user_entries(username: str, mediaType: str):
 
 @router.get("/list/anime")
 async def get_user_anime_list():
-    return await fetch_anime_list()
+    start = perf_counter() 
+    try:
+        return await fetch_anime_list() 
+    finally:
+        time_tot = perf_counter() - start
+        ANIME_LIST_DURATION.observe(time_tot)
 
 
 @router.get("/list/manga")
