@@ -9,7 +9,7 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 #on cherche le dossier web qui est dans le dossier api/
-app.mount("/ui", StaticFiles(directory="web", html=True), name="web")
+# app.mount("/ui", StaticFiles(directory="web", html=True), name="web")
 
 # Health sous /api :
 @api_router.get("/health", tags=["Health"])

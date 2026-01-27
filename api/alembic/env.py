@@ -5,8 +5,8 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from api.db import Base
-from api import models
+from db import Base
+import models
 
 import os
 
