@@ -7,7 +7,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# COPIE TOUT le code (main.py + anilist/)
+# COPIE TOUT le code (main.py + anilist/ + web/)
 COPY . .
 
 EXPOSE 8000

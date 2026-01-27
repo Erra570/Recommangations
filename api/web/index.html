@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>RecoMangaTion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/ui/style.css">
+</head>
+
+<body>
+  <h1>RecoMangaTion</h1>
+  <div class="subtitle">Recherche un profil AniList et affiche ses infos.</div>
+
+  <div class="row">
+    <input
+      id="username"
+      type="text"
+      placeholder="AniList username (ex: Voidhi)"
+      autocomplete="off"
+    />
+    <button id="searchBtn">Rechercher</button>
+    <button id="clearBtn" type="button">Effacer</button>
+  </div>
+
+  <div id="status" class="status muted"></div>
+
+  <div id="result" class="card" style="display: none;">
+    <h2>Profil AniList</h2>
+    <div id="userInfo" class="muted"></div>
+
+    <div class="row" style="margin-top: 12px;">
+      <label class="muted">
+        <input type="checkbox" id="withLists" />
+        Charger aussi les listes (peut être long)
+      </label>
+    </div>
+
+    <div id="listsBlock" style="display:none;">
+      <h3>Animés (données brutes)</h3>
+      <pre id="animeList"></pre>
+
+      <h3>Mangas (données brutes)</h3>
+      <pre id="mangaList"></pre>
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const userInfoEl = document.getElementById("userInfo");
+    const listsBlockEl = document.getElementById("listsBlock");
+    const animeListEl = document.getElementById("animeList");
+    const mangaListEl = document.getElementById("mangaList");
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.className = isError ? "status error" : "status muted";
+    }
+
+    function show(el, visible) {
+      el.style.display = visible ? "block" : "none";
+    }
+
+    async function apiGet(path) {
+      const res = await fetch(path);
+      const text = await res.text();
+
+      let data;
+      try { data = JSON.parse(text); } catch { data = text; }
+
+      if (!res.ok) {
+        throw new Error((data && data.detail) ? data.detail : "Erreur API");
+      }
+      return data;
+    }
+
+    async function searchProfile() {
+      const username = document.getElementById("username").value.trim();
+      const withLists = document.getElementById("withLists").checked;
+
+      if (!username) {
+        setStatus("Entre un username AniList.", true);
+        return;
+      }
+
+      setStatus("Recherche du profil...");
+      show(resultEl, false);
+      show(listsBlockEl, false);
+
+      try {
+        const user = await apiGet(`/api/user/${encodeURIComponent(username)}`);
+        userInfoEl.textContent = `ID: ${user.user_id} — Username: ${user.username}`;
+        show(resultEl, true);
+
+        if (withLists) {
+          setStatus("Chargement des listes (anime + manga)...");
+          const [anime, manga] = await Promise.all([
+            apiGet(`/api/user/${encodeURIComponent(username)}/list/anime`),
+            apiGet(`/api/user/${encodeURIComponent(username)}/list/manga`)
+          ]);
+
+          animeListEl.textContent = JSON.stringify(anime, null, 2);
+          mangaListEl.textContent = JSON.stringify(manga, null, 2);
+          show(listsBlockEl, true);
+        }
+
+        setStatus("OK");
+      } catch (err) {
+        setStatus("Erreur : " + err.message, true);
+      }
+    }
+
+    function clearUI() {
+      document.getElementById("username").value = "";
+      document.getElementById("withLists").checked = false;
+      show(resultEl, false);
+      show(listsBlockEl, false);
+      animeListEl.textContent = "";
+      mangaListEl.textContent = "";
+      setStatus("");
+    }
+
+    document.getElementById("searchBtn").addEventListener("click", searchProfile);
+    document.getElementById("clearBtn").addEventListener("click", clearUI);
+    document.getElementById("username").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchProfile();
+    });
+  </script>
+</body>
+</html>
