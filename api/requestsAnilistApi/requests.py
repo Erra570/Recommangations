@@ -9,7 +9,6 @@ from queries import (
     QUERY_USER_GET_FAVORITES,
     QUERY_USER_GET_ENTRIES,
 
-
     QUERY_LIST_ANIME,
     QUERY_LIST_MANGA,
 )
@@ -56,28 +55,28 @@ def list_processing(list: dict):
             
             # score processing
             nb = 0
-            media["averageScore"] = 0
+            media["meanScore"] = 0
             media["scoreVariance"] = 0
             for score in media["stats"]["scoreDistribution"]:
                 nb += score["amount"]
-                media["averageScore"] += score["score"] * score["amount"]
-            media["averageScore"] = (int) (media["averageScore"] / nb)
+                media["meanScore"] += score["score"] * score["amount"]
+            media["meanScore"] = (int) (media["meanScore"] / nb)
             
             for score in media["stats"]["scoreDistribution"]:
-                media["scoreVariance"] += ((score["score"] - media["averageScore"]) ** 2) * score["amount"]
+                media["scoreVariance"] += ((score["score"] - media["meanScore"]) ** 2) * score["amount"]
             media["scoreVariance"] = (int) (np.sqrt(media["scoreVariance"] / nb))
 
             # status processing
-            media["current_completed"] = 0
-            media["planned"] = 0
-            media["dropped_paused"] = 0
+            media["completedWatching"] = 0
+            media["planning"] = 0
+            media["droppedPaused"] = 0
             for statu in media["stats"]["statusDistribution"]:
                 if statu["status"] in ["CURRENT", "COMPLETED"]:
-                    media["current_completed"] += statu["amount"]
+                    media["completedWatching"] += statu["amount"]
                 elif statu["status"] == "PLANNING":
-                    media["planned"] += statu["amount"]
+                    media["planning"] += statu["amount"]
                 elif statu["status"] in ["DROPPED", "PAUSED"]:
-                    media["dropped_paused"] += statu["amount"]
+                    media["droppedPaused"] += statu["amount"]
             media.pop("stats")
 
             #staff processing
@@ -88,11 +87,12 @@ def list_processing(list: dict):
             media.pop("staff")
 
             #studio processing
-            media["studio_old"] = media["studios"]
-            media["studios"] = []
-            for studio in media["studio_old"]["nodes"]:
-                media["studios"].append(studio["id"])
-            media.pop("studio_old")
+            if "studios" in media:
+                media["studio_old"] = media["studios"]
+                media["studios"] = []
+                for studio in media["studio_old"]["nodes"]:
+                    media["studios"].append(studio["id"])
+                media.pop("studio_old")
 
             #cover url 
             media["coverImage"] = media["coverImage"]["large"]
@@ -129,14 +129,44 @@ async def fetch_anime_list():
                 return json.load(f)
         except ValueError:
             print("anime.json currupted.")
-        
-    print("Fetch data from Anilist...")
-    rep = await anilist_post(QUERY_LIST_ANIME, {"page": 0})
-    print("Decode data from Anilist...")
+
+    print("Fetch anime data from Anilist...")
+    i = 1
+    rep = await anilist_post(QUERY_LIST_ANIME("ID"), {"page": 0})
+    rep_all = np.array(list_processing(rep))
+    while rep["Page"]["pageInfo"]["hasNextPage"] and i < 10:
+        print("Fetch anime data from Anilist "+str(i)+"/???")
+        rep = await anilist_post(QUERY_LIST_ANIME("ID"), {"page": i})
+        rep_all = np.concatenate((rep_all, np.array(list_processing(rep))))
+        i += 1
+    
+    print("Save manga data...")
+    rep_all = rep_all.tolist()
     with open("./../../data/tmp/anime.json", "w") as f:
-        json.dump(list_processing(rep), f, indent=2)
-    return rep
+        json.dump(rep_all, f, indent=2)
+    return rep_all
 
 
 async def fetch_manga_list():
-    return await anilist_post(QUERY_LIST_MANGA, {"page": 0})
+    if os.path.isfile("./../../data/tmp/manga.json"):
+        try:
+            with open("./../../data/tmp/manga.json", "r") as f:
+                return json.load(f)
+        except ValueError:
+            print("manga.json currupted.")
+
+    print("Fetch manga data from Anilist...")
+    i = 1
+    rep = await anilist_post(QUERY_LIST_MANGA("ID"), {"page": 0})
+    rep_all = np.array(list_processing(rep))
+    while rep["Page"]["pageInfo"]["hasNextPage"] and i < 10:
+        print("Fetch manga data from Anilist "+str(i)+"/???")
+        rep = await anilist_post(QUERY_LIST_MANGA("ID"), {"page": i})
+        rep_all = np.concatenate((rep_all, np.array(list_processing(rep))))
+        i += 1
+    
+    print("Save manga data...")
+    rep_all = rep_all.tolist()
+    with open("./../../data/tmp/manga.json", "w") as f:
+        json.dump(rep_all, f, indent=2)
+    return rep_all

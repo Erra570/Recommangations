@@ -72,131 +72,125 @@ query UserMediaList(
 """
 
 
-
-
-
-
-
-# Pas sûr qu'ils soient utilisés : 
-# TODO : maybe delete
-
-QUERY_LIST_ANIME = """
-query($page: Int) {
-  Page(page: $page, perPage: 50) {
-    pageInfo {
-      total
-      currentPage
-      lastPage
-      hasNextPage
-    }
-    media(type: ANIME, sort: UPDATED_AT_DESC, status_not: NOT_YET_RELEASED) {
-      id
-      title {
-				romaji
-        english
-      }
-      countryOfOrigin
-      format
-      startDate {
-        day
-        month
-        year
-      }
-      stats {
-        scoreDistribution {
-          score
-          amount
+def QUERY_LIST_ANIME(sort = "UPDATED_AT_DESC"):
+  return  """
+    query($page: Int) {
+      Page(page: $page, perPage: 50) {
+        pageInfo {
+          total
+          currentPage
+          lastPage
+          hasNextPage
         }
-        statusDistribution {
+        media(type: ANIME, sort:"""+sort+""", status_not: NOT_YET_RELEASED) {
+          id
+          title {
+            romaji
+            english
+          }
+          countryOfOrigin
+          format
+          startDate {
+            day
+            month
+            year
+          }
+          stats {
+            scoreDistribution {
+              score
+              amount
+            }
+            statusDistribution {
+              status
+              amount
+            }
+          }
           status
-          amount
+          tags {
+            id
+            rank
+          }
+          favourites
+          staff(sort: RELEVANCE) {
+            nodes {
+              id
+            }
+            edges {
+              role
+            }
+          }
+          updatedAt
+          genres
+          studios(isMain: true) {
+            nodes {
+              id
+            }
+          }
+          episodes
+          coverImage {
+            large
+          }
+          isAdult
         }
       }
-      status
-      tags {
-        id
-        rank
-      }
-      favourites
-      staff(sort: RELEVANCE) {
-        nodes {
-          id
-        }
-        edges {
-          role
-        }
-      }
-      updatedAt
-      genres
-      studios(isMain: true) {
-        nodes {
-          id
-        }
-      }
-      episodes
-      coverImage {
-        large
-      }
-      isAdult
     }
-  }
-}
-"""
+    """
 
-QUERY_LIST_MANGA = """
-query($page: Int) {
-  Page(page: $page, perPage: 50) {
-    pageInfo {
-      total
-      currentPage
-      lastPage
-      hasNextPage
-    }
-    media(type: MANGA, sort: UPDATED_AT_DESC, status_not: NOT_YET_RELEASED) {
-      id
-      chapters
-      title {
-	      romaji
-        english
-      }
-      countryOfOrigin
-      format
-      startDate {
-        day
-        month
-        year
-      }
-      stats {
-        scoreDistribution {
-          score
-          amount
+def QUERY_LIST_MANGA(sort = "UPDATED_AT_DESC"):
+  return """
+    query($page: Int) {
+      Page(page: $page, perPage: 50) {
+        pageInfo {
+          total
+          currentPage
+          lastPage
+          hasNextPage
         }
-        statusDistribution {
-          status
-          amount
-        }
-      }
-      status
-      tags {
-        id
-        rank
-      }
-      favourites
-      staff(sort: RELEVANCE) {
-        nodes {
+        media(type: MANGA, sort:"""+sort+""", status_not: NOT_YET_RELEASED) {
           id
-        }
-        edges {
-          role
+          chapters
+          title {
+            romaji
+            english
+          }
+          countryOfOrigin
+          format
+          startDate {
+            day
+            month
+            year
+          }
+          stats {
+            scoreDistribution {
+              score
+              amount
+            }
+            statusDistribution {
+              status
+              amount
+            }
+          }
+          status
+          tags {
+            id
+            rank
+          }
+          favourites
+          staff(sort: RELEVANCE) {
+            nodes {
+              id
+            }
+            edges {
+              role
+            }
+          }
+          genres
+          updatedAt
+          coverImage {
+            large
+          }
+          isAdult
         }
       }
-      genres
-      updatedAt
-      coverImage {
-        large
-      }
-      isAdult
     }
-  }
-}
-"""
+    """
