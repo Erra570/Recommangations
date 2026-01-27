@@ -28,17 +28,12 @@ async def get_user_entries(username: str, mediaType: str):
     return await fetch_user_entries_list(user["id"], mediaType)
 
 
-
-
-
-# Pas sûr qu'ils soient utilisés : 
-# TODO : maybe delete
 @router.get("/{username}/list/anime")
 async def get_user_anime_list(username: str):
-    return await fetch_user_anime_list(username)
+    return await fetch_anime_list(username)
 
 
 @router.get("/{username}/list/manga")
 async def get_user_manga_list(username: str):
-    return await fetch_user_manga_list(username)
+    return await fetch_manga_list(username)
 #endregion
