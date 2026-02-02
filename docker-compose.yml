@@ -19,9 +19,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 35s
     networks:
       - recoMangaTion-network
+      - monitoring 
 
   # Service Frontend Web
   web:

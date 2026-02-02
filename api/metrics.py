@@ -3,12 +3,14 @@ from prometheus_client import Counter, Histogram, Gauge
 # Counters :
 USER_ID_REQUESTS = Counter(
     "user_id_requests_total",
-    "Counter du nombre de UserId recherchés à partir d'un UserName"
+    "Counter du nombre de UserId recherchés à partir d'un UserName",
+    ["status"] #succes/echec
 )
 
 ANILIST_ERRORS = Counter(
     "anilist_errors_total",
-    "Total number of AniList API errors"
+    "Nb total d'erreurs de l'API d'Anilist",
+    ["error_type"]
 )
 
 # Histograms

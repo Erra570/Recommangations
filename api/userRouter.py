@@ -18,9 +18,12 @@ router = APIRouter()
 #region FastAPI requests
 @router.get("/{username}")
 async def get_user_id(username: str):    
-    user = await fetch_user_id(username)
-    USER_ID_REQUESTS.inc() 
-    return {"user_id": user["id"], "username": user["name"]}
+    try:
+        user = await fetch_user_id(username)
+        USER_ID_REQUESTS.labels(status="success").inc()
+        return {"user_id": user["id"], "username": user["name"]}
+    except Exception as e:
+        USER_ID_REQUESTS.labels(status="error").inc()
 
 @router.get("/{username}/favorites")
 async def get_user_favorites(username: str):
