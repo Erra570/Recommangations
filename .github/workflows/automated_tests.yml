@@ -26,4 +26,4 @@ jobs:
         env:
           PYTHONPATH: api
         run: |
-          pytest api/testsGitHubAction/
+          pytest api/testsGitHubAction/ -vv

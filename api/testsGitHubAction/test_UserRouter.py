@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from userRouter import router as user_router 
+from api.userRouter import router as user_router 
 
 ### - - - Tests sur userRouter.py - - -
 

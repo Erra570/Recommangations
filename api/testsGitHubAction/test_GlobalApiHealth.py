@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
-from main import app, api_router
+from api.main import app, api_router
 
 ### - - - Tests généraux (du main.py, etc) - - -
 
