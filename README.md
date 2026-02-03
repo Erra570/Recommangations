@@ -17,3 +17,8 @@ Interact with database
 ```
 docker compose exec db psql -U api -d db_anilist
 ```
+En cas de changement de la structure de la base de donnée dans le code :
+```
+docker compose exec api alembic -c alembic.ini revision --autogenerate -m "description_de_votre_migration"
+docker compose exec api alembic -c alembic.ini upgrade head
+```
