@@ -1,12 +1,11 @@
 from fastapi.testclient import TestClient
 import pytest
 
-from api.main import app, api_router
+from main import app
 
 ### - - - Tests généraux (du main.py, etc) - - -
 
 client = TestClient(app)
-client_api = TestClient(api_router)
 
 def test_root_health():
     rep = client.get("/health")
@@ -14,7 +13,7 @@ def test_root_health():
     assert rep.json() == {"status": "ok"}
 
 def test_api_health():
-    rep = client_api.get("/health")
+    rep = client.get("/api//health")
     assert rep.status_code == 200
     assert rep.json() == {"status": "ok"}
 
