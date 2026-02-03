@@ -29,7 +29,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/api
         run: |
           cd api
-          pytest testsGitHubAction/ -v --tb=short
+          pytest testsGitHubAction/ -v --tb=short --junitxml=pytest-report.xml
 
       - name: Report des tests failures
         if: failure()
