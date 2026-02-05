@@ -1,50 +1,24 @@
 # RecoMangaTions
 Projet DevOps / Algorithme de recommandation d'animes et de mangas
-##Requetes GraphQL
+## Lauch project : 
 ```
-query ($id: Int) {
-  MediaListCollection(userId: $id, type: MANGA, status_in: [COMPLETED], sort: SCORE_DESC) {
-    lists {
-      entries {
-        score
-        progress
-        media {
-          id
-          chapters
-          episodes
-          averageScore
-          meanScore
-          title {
-            english
-          }
-          genres
-          tags {
-            name
-            rank
-            isMediaSpoiler
-          }
-        }
-      }
-    }
-  }
-}
+docker compose up --build -d
+docker compose exec api alembic -c alembic.ini upgrade head
 ```
+Download database 
 ```
-query ($name: String) {
-	User (name: $name) {
-		id
-		statistics {
-			manga {
-				tags (sort: COUNT_DESC){
-					chaptersRead
-					count
-					tag{
-						name
-						description
-					}
-				}
-			}
-		}
-	}
-}
+docker compose exec db pg_dump -U api -d db_anilist> db_anilist.sql
+```
+Upload database 
+```
+???
+```
+Interact with database 
+```
+docker compose exec db psql -U api -d db_anilist
+```
+En cas de changement de la structure de la base de donnée dans le code :
+```
+docker compose exec api alembic -c alembic.ini revision --autogenerate -m "description_de_votre_migration"
+docker compose exec api alembic -c alembic.ini upgrade head
 ```

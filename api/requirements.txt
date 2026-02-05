@@ -10,3 +10,4 @@ alembic
 asyncpg
 numpy
 datetime
+pytest

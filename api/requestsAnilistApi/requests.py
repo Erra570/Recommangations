@@ -144,7 +144,7 @@ def list_processing(list: dict):
     return medias
 
 # listMedia est soit la liste des media MANGA, soit ANIME (pas les 2)
-def list_processing_user_infos(listMedia: dict, listFav: dict, mediaType = "manga"):
+def list_processing_user_infos(listMedia: dict, listFav: dict, mediaType: str):
     formatted_list = []
 
     # Booléens des oeuvres mises en favories :
@@ -198,12 +198,13 @@ async def fetch_user_entries_list(userId: int, mediaType: str):
     mediaType = mediaType.upper()
     if mediaType not in MEDIA_TYPE:
         raise HTTPException(status_code=404, detail=f"Type {mediaType} inconnu. Liste des types : {MEDIA_TYPE}")
-    if os.path.isfile("./../../data/tmp/userInfos.json"):
-        try:
-            with open("./../../data/tmp/userInfos.json", "r") as f:
-                return json.load(f)
-        except ValueError:
-            print("userInfos.json corrupted.")
+    
+    # if os.path.isfile(f"./../../data/tmp/userInfos_{mediaType}.json"):
+    #     try:
+    #         with open(f"./../../data/tmp/userInfos_{mediaType}.json", "r") as f:
+    #            return json.load(f)
+    #     except ValueError:
+    #         print(f"userInfos_{mediaType}.json corrupted.")
 
     print("Fetch user data from Anilist...")
     listMedia = await anilist_post(QUERY_USER_GET_ENTRIES, {"userId": userId, "type": mediaType})
@@ -212,10 +213,10 @@ async def fetch_user_entries_list(userId: int, mediaType: str):
     print("Decode data from Anilist...")
     formatted = list_processing_user_infos(listMedia, listFav, mediaType.lower())
     
-    os.makedirs("./../../data/tmp", exist_ok=True)
-    with open("./../../data/tmp/userInfos.json", "w") as f:
-        json.dump(formatted, f, indent=2)
-    return listMedia
+    # os.makedirs("./../../data/tmp", exist_ok=True)
+    # with open(f"./../../data/tmp/userInfos_{mediaType}.json", "w") as f:
+    #      json.dump(formatted, f, indent=2)
+    return formatted
 
 
 async def fetch_list(list_name, list_query, list_param, mapper, insert):
