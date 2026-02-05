@@ -5,4 +5,4 @@ class Studio(Base):
     __tablename__ = "studio"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)

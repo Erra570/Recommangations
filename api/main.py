@@ -1,6 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from userRouter import router as user_router 
+from anilistRouter import router as anilist_router 
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -36,6 +37,8 @@ async def health_check_root():
 
 #region - - - Autres routers :
 api_router.include_router(user_router, prefix="/user", tags=["UserRequests"])
+api_router.include_router(anilist_router, prefix="/anilistContent", tags=["ContentRequests"])
+
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics") # Prometheus metrics (ex: /metrics)
 #endregion

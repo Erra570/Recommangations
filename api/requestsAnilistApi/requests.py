@@ -4,6 +4,7 @@ import json
 import numpy as np
 import os.path
 import re
+import time
 from .mapper import *
 from repository.anilistImport import *
 from datetime import datetime
@@ -15,21 +16,43 @@ from .queries import (
 
     QUERY_LIST_ANIME,
     QUERY_LIST_MANGA,
+
+    QUERY_ALL_GENRE,
+    QUERY_ALL_STAFF,
+    QUERY_ALL_STUDIO,
+    QUERY_ALL_TAG,
 )
 
 ANILIST_API_URL = "https://graphql.anilist.co"
 MEDIA_TYPE = ["MANGA", "ANIME"]
+ANILIST_RATE_LIMIT = 30 #per min
+last_request_timestamp = time.time()
 
 
-async def anilist_post(query: str, variables: dict):
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        response = await client.post(
-            ANILIST_API_URL,
-            json={"query": query, "variables": variables},
-            headers={"Content-Type": "application/json"},
-        )
-        response.raise_for_status()
+async def anilist_post(query: str, variables: dict = {}):
+    global last_request_timestamp
+    if time.time() - last_request_timestamp < 60/ANILIST_RATE_LIMIT:
+        time.sleep(60/ANILIST_RATE_LIMIT - (time.time() - last_request_timestamp))
+
+    async with httpx.AsyncClient(timeout=20.0, transport = httpx.AsyncHTTPTransport(retries=2)) as client:
+        #try the same request a second time while respect limit rate
+        try:
+            response = await client.post(
+                ANILIST_API_URL,
+                json={"query": query, "variables": variables},
+                headers={"Content-Type": "application/json"},
+            )
+            response.raise_for_status()
+        except:
+            time.sleep(60/ANILIST_RATE_LIMIT)
+            response = await client.post(
+                ANILIST_API_URL,
+                json={"query": query, "variables": variables},
+                headers={"Content-Type": "application/json"},
+            )
+            response.raise_for_status()
         payload = response.json()
+    last_request_timestamp = time.time()
 
     if payload.get("errors"):
         msg = payload["errors"][0].get("message", "AniList API error")
@@ -40,18 +63,22 @@ async def anilist_post(query: str, variables: dict):
 #region formatting
 def list_processing(list: dict):
     #patern for match staff 
-    pattern = re.compile("^[Story|Art|Story & Art|Original Story|Original Creator|Director].*$")
+    pattern = re.compile("^(Story|Art|Story & Art|Author|Art & Story|Script|Original Work|Original Story|Original Creator|Director)( .+)*$")
 
     medias = list["Page"]["media"]
     rm_list = []
-    i = -1
-    for media in medias:
-        i += 1
-        if media["stats"]["scoreDistribution"] == None :
+    for i, media in enumerate(medias):
+        if media["stats"]["scoreDistribution"] == None or media["startDate"]["year"] == None:
             rm_list.append(i)
+            #print(media)
         else :
             #date processing
-            media["startDate"] = str(media["startDate"]["day"])+"-"+str(media["startDate"]["month"])+"-"+str(media["startDate"]["year"])
+            day = media["startDate"]["day"] if media["startDate"]["day"] is not None else 1
+            month = media["startDate"]["month"] if media["startDate"]["month"] is not None else 1
+            try :
+                media["startDate"] = datetime(media["startDate"]["year"], month, day)
+            except:
+                media["startDate"] = datetime(media["startDate"]["year"], month, 1)
 
             # tag processing
             j = 0
@@ -68,11 +95,15 @@ def list_processing(list: dict):
             for score in media["stats"]["scoreDistribution"]:
                 nb += score["amount"]
                 media["meanScore"] += score["score"] * score["amount"]
-            media["meanScore"] = (int) (media["meanScore"] / nb)
+            media["meanScore"] = ((int) (media["meanScore"] / nb)) if nb > 0 else None
             
             for score in media["stats"]["scoreDistribution"]:
                 media["scoreVariance"] += ((score["score"] - media["meanScore"]) ** 2) * score["amount"]
-            media["scoreVariance"] = (int) (np.sqrt(media["scoreVariance"] / nb))
+            media["scoreVariance"] = (int) (np.sqrt(media["scoreVariance"] / nb)) if nb > 0 else None
+
+            # supprime l'entrée s'il n'y a eu aucune note 
+            if nb < 0:
+                rm_list.append(i)
 
             # status processing
             media["completedWatching"] = 0
@@ -107,7 +138,7 @@ def list_processing(list: dict):
             media["coverImage"] = media["coverImage"]["large"]
 
     if len(rm_list) > 0:
-        for i in rm_list.reverse():
+        for i in reversed(rm_list):
             medias.pop(i)
 
     return medias
@@ -186,34 +217,86 @@ async def fetch_user_entries_list(userId: int, mediaType: str):
         json.dump(formatted, f, indent=2)
     return listMedia
 
-async def fetch_list(list_name, list_query):
-    """if os.path.isfile("./../../data/tmp/"+list_name+".json"):
-        try:
-            with open("./../../data/tmp/"+list_name+".json", "r") as f:
-                return json.load(f)
-        except ValueError:
-            print(list_name+".json currupted.")"""
 
-    print("Fetch "+list_name+" data from Anilist...")
-    i = 1
-    rep = await anilist_post(list_query("ID"), {"page": 0})
-    rep_all = np.array(list_processing(rep))
-    while rep["Page"]["pageInfo"]["hasNextPage"] and i < 10:
-        print("Fetch "+list_name+" data from Anilist "+str(i)+"/???")
-        rep = await anilist_post(list_query("ID"), {"page": i})
-        rep_all = np.concatenate((rep_all, np.array(list_processing(rep))))
+async def fetch_list(list_name, list_query, list_param, mapper, insert):
+    i = 2
+    while True:
+        print("Fetch "+list_name+" data from Anilist "+str(i)+"/????")
+        rep = await anilist_post(list_query, {"page": i} | list_param)
+        print("Save "+list_name+" data from Anilist "+str(i)+"/????")
+        if not insert(mapper(rep)) or not rep["Page"]["pageInfo"]["hasNextPage"]:
+            break
         i += 1
-    
-    print("Save "+list_name+" data...")
-    rep_all = rep_all.tolist()
-    """with open("./../../data/tmp/"+list_name+".json", "w") as f:
-        json.dump(rep_all, f, indent=2)"""
-    insert_media(to_animes_entries(rep_all))
-    return rep_all
+
+    return rep
 
 async def fetch_anime_list():
-    return await fetch_list("anime", QUERY_LIST_ANIME)
+    return await fetch_list("anime", QUERY_LIST_ANIME, {"sort": "ID"}, lambda x: animes_to_entries(list_processing(x)), insert_media)
+
+async def update_anime_list():
+    return await fetch_list("anime", QUERY_LIST_ANIME, {"sort": "UPDATED_AT_DESC"}, lambda x: animes_to_entries(list_processing(x)), update_media)
+
 
 
 async def fetch_manga_list():
-    return await fetch_list("manga", QUERY_LIST_MANGA)
+    return await fetch_list("manga", QUERY_LIST_MANGA, {"sort": "ID"}, lambda x: manga_to_entries(list_processing(x)), insert_media)
+
+async def update_manga_list():
+    return await fetch_list("manga", QUERY_LIST_MANGA, {"sort": "UPDATED_AT_DESC"}, lambda x: manga_to_entries(list_processing(x)), update_media)
+
+async def fetch_tags():
+    print("Fetch tag data from Anilist...")
+    rep = await anilist_post(QUERY_ALL_TAG)
+
+    print("Save tag data...")
+    add_all(tag_to_entries(rep["MediaTagCollection"]))
+
+    return rep
+
+async def update_tags():
+    return await fetch_tags()
+
+async def fetch_genres():
+    print("Fetch genre data from Anilist...")
+    rep = await anilist_post(QUERY_ALL_GENRE)
+
+    print("Save genre data...")
+    add_all(genre_to_entries(rep["GenreCollection"]))
+
+    return rep
+
+async def update_genres():
+    return await fetch_genres()
+
+async def fetch_staffs():
+    return await fetch_list("staff", QUERY_ALL_STAFF, {"sort": "ID"}, lambda x: staff_to_entries(x["Page"]["staff"]), add_all)
+
+async def update_staffs():
+    return await fetch_list("staff", QUERY_ALL_STAFF, {"sort": "ID_DESC"}, lambda x: staff_to_entries(x["Page"]["staff"]), add_all)
+
+async def fetch_studios():
+    return await fetch_list("studio", QUERY_ALL_STUDIO, {"sort": "ID"}, lambda x: studio_to_entries(x["Page"]["studios"]), add_all)
+
+async def update_studios():
+    return await fetch_list("studio", QUERY_ALL_STUDIO, {"sort": "ID_DESC"}, lambda x: studio_to_entries(x["Page"]["studios"]), add_all)
+
+async def fetch_all():
+    purge_all()
+    await fetch_genres()
+    await fetch_tags()
+    await fetch_staffs()
+    await fetch_studios()
+
+    await fetch_anime_list()
+    await fetch_manga_list()
+
+
+async def update_all():
+    purge_all()
+    await update_genres()
+    await update_tags()
+    await update_staffs()
+    await update_studios()
+
+    await update_anime_list()
+    await update_manga_list()

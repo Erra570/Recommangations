@@ -1,7 +1,7 @@
 from models import *
 import numpy as np
 
-def to_anime_entry(media):
+def anime_to_entry(media):
 	anime = Anime()
 	anime.id					= media["id"]
 	anime.cover_image			= media["coverImage"]
@@ -31,7 +31,7 @@ def to_anime_entry(media):
 		tags.append(tag)
 	
 	genres = []
-	for name_genre in media["genre"]:
+	for name_genre in media["genres"]:
 		genre = AnimeGenre()
 		genre.anime_id		= anime.id
 		genre.genre_name	= name_genre
@@ -52,21 +52,118 @@ def to_anime_entry(media):
 		staff.role		= m_staff["role"]
 		staffs.append(staff)
 	
-	return {"Anime": np.array([anime]),
-			"AnimeTag": np.array(tags),
-			"AnimeGenre": np.array(genres),
-			"AnimeStudio": np.array(studios),
-			"AnimeStaff": np.array(staffs)}
+	return {"Anime": [anime],
+		 	"AnimeTag": tags,
+			"AnimeGenre": genres,
+			"AnimeStudio": studios,
+			"AnimeStaff": staffs}
 
-def to_animes_entries(medias):
-	rep = {"Anime": np.array(),
-		 	"AnimeTag": np.array(),
-			"AnimeGenre": np.array(),
-			"AnimeStudio": np.array(),
-			"AnimeStaff": np.array()}
+def animes_to_entries(medias):
+	rep = []
+	for media in medias:
+		rep.append(anime_to_entry(media))
+	
+	return rep
+
+
+def manga_to_entry(media):
+	manga = Manga()
+	manga.id					= media["id"]
+	manga.cover_image			= media["coverImage"]
+	manga.title_romaji			= media["title"]["romaji"]
+	manga.title_english			= media["title"]["english"]
+	manga.format				= media["format"]
+	manga.start_date			= media["startDate"]
+	manga.country_of_origin		= media["countryOfOrigin"]
+	manga.mean_score			= media["meanScore"]
+	manga.dropped_paused		= media["droppedPaused"]
+	manga.completed_watching	= media["completedWatching"]
+	manga.planning				= media["planning"]
+	manga.variance_score		= media["scoreVariance"]
+	manga.status				= media["status"]
+	manga.favourites			= media["favourites"]
+	manga.updated_at			= media["updatedAt"]
+	manga.chapters				= media["chapters"]
+	manga.is_adult				= media["isAdult"]
+
+	tags = []
+	for m_tag in media["tags"]:
+		tag = MangaTag()
+		tag.manga_id	= manga.id
+		tag.tag_id		= m_tag["id"]
+		tag.rank		= m_tag["rank"]
+		tag.is_spoiler	= m_tag["isMediaSpoiler"]
+		tags.append(tag)
+	
+	genres = []
+	for name_genre in media["genres"]:
+		genre = MangaGenre()
+		genre.manga_id		= manga.id
+		genre.genre_name	= name_genre
+		genres.append(genre)
+
+	staffs = []
+	for m_staff in media["staffs"]:
+		staff = MangaStaff()
+		staff.manga_id	= manga.id
+		staff.staff_id	= m_staff["id"]
+		staff.role		= m_staff["role"]
+		staffs.append(staff)
+	
+	return {"Manga": np.array([manga]),
+		 	"MangaTag": np.array(tags),
+			"MangaGenre": np.array(genres),
+			"MangaStaff": np.array(staffs)}
+
+def manga_to_entries(medias):
+	rep = {"Manga": np.array([]),
+		 	"MangaTag": np.array([]),
+			"MangaGenre": np.array([]),
+			"MangaStaff": np.array([])}
 	
 	for media in medias:
-		tmp = to_anime_entry(media)
-		rep["Anime"] = np.concatenate((rep["Anime"], tmp["Anime"]))
+		tmp = manga_to_entry(media)
+		rep["Manga"] = np.concatenate((rep["Manga"],		tmp["Manga"]))
+		rep["MangaTag"] = np.concatenate((rep["MangaTag"],		tmp["MangaTag"]))
+		rep["MangaGenre"] = np.concatenate((rep["MangaGenre"],	tmp["MangaGenre"]))
+		rep["MangaStaff"] = np.concatenate((rep["MangaStaff"],	tmp["MangaStaff"]))
 	
+	return rep
+
+def tag_to_entries(tags):
+	rep = []
+	for m_tag in tags:
+		tag = Tag()
+		tag.id			= m_tag["id"]
+		tag.category	= m_tag["category"]
+		tag.name		= m_tag["name"]
+		tag.is_spoiler	= m_tag["isGeneralSpoiler"]
+		tag.is_adult	= m_tag["isAdult"]
+		rep.append(tag)
+	return rep
+
+def genre_to_entries(genre_names):
+	rep = []
+	for genre_name in genre_names:
+		genre = Genre()
+		genre.name = genre_name
+		rep.append(genre)
+	return rep
+
+def staff_to_entries(staffs):
+	rep = []
+	for m_staff in staffs:
+		staff = Staff()
+		staff.id = m_staff["id"]
+		staff.name = m_staff["name"]["full"]
+		rep.append(staff)
+	return rep
+
+def studio_to_entries(studios):
+	rep = []
+	for m_studio in studios:
+		studio = Studio()
+		studio.id = m_studio["id"]
+		studio.name = m_studio["name"]
+		rep.append(studio)
 	return rep
