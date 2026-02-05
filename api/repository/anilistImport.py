@@ -14,13 +14,15 @@ def update_media(medias):
     flag = True
     for session in get_db():
         for media in medias:
-            if("Anime" in media):
+            if "Anime" in media:
                 new_media = media["Anime"][0]
                 db_media = session.get(Anime, new_media.id)
             else:
                 new_media = media["Manga"][0]
                 db_media = session.get(Manga, new_media.id)
-            if(db_media is None or db_media.updated_at < new_media.updated_at):
+            if db_media is None or db_media.updated_at < new_media.updated_at:
+                if not db_media is None:
+                    session.delete(db_media)
                 session.add(new_media)
                 for key, entries in media.items():
                     if not key in ["Anime", "Manga"]:

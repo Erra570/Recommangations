@@ -110,23 +110,15 @@ def manga_to_entry(media):
 		staff.role		= m_staff["role"]
 		staffs.append(staff)
 	
-	return {"Manga": np.array([manga]),
-		 	"MangaTag": np.array(tags),
-			"MangaGenre": np.array(genres),
-			"MangaStaff": np.array(staffs)}
+	return {"Manga": [manga],
+		 	"MangaTag": tags,
+			"MangaGenre": genres,
+			"MangaStaff": staffs}
 
 def manga_to_entries(medias):
-	rep = {"Manga": np.array([]),
-		 	"MangaTag": np.array([]),
-			"MangaGenre": np.array([]),
-			"MangaStaff": np.array([])}
-	
+	rep = []
 	for media in medias:
-		tmp = manga_to_entry(media)
-		rep["Manga"] = np.concatenate((rep["Manga"],		tmp["Manga"]))
-		rep["MangaTag"] = np.concatenate((rep["MangaTag"],		tmp["MangaTag"]))
-		rep["MangaGenre"] = np.concatenate((rep["MangaGenre"],	tmp["MangaGenre"]))
-		rep["MangaStaff"] = np.concatenate((rep["MangaStaff"],	tmp["MangaStaff"]))
+		rep.append(manga_to_entry(media))
 	
 	return rep
 
