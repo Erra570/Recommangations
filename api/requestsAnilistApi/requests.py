@@ -220,7 +220,7 @@ async def fetch_user_entries_list(userId: int, mediaType: str):
 
 
 async def fetch_list(list_name, list_query, list_param, mapper, insert):
-    i = 2
+    i = 1
     while True:
         print("Fetch "+list_name+" data from Anilist "+str(i)+"/????")
         rep = await anilist_post(list_query, {"page": i} | list_param)
@@ -293,7 +293,6 @@ async def fetch_all():
 
 
 async def update_all():
-    purge_all()
     await update_genres()
     await update_tags()
     await update_staffs()
