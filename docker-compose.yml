@@ -74,7 +74,7 @@ services:
     depends_on:
       - api
 
-  # Grafabna :
+  # Grafana :
   grafana:
     image: grafana/grafana
     container_name: grafana-container
@@ -91,6 +91,28 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+  
+  #MLFlow
+  mlflow:
+    image: python:3.11-slim
+    container_name: mlflow-server
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - mlflow_data:/mlflow
+    command: >
+      sh -lc "
+      pip install -q 'mlflow>=2.9.0' &&
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root mlflow-artifacts:/
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      "
+    ports:
+      - "5001:5000"
 
 networks:
   recoMangaTion-network:
@@ -102,3 +124,4 @@ volumes:
   prom_data:
   grafana_data:
   pgdata:
+  mlflow_data:
