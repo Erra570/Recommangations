@@ -26,11 +26,17 @@ services:
 
   # Service Frontend Web
   web:
-    build: ./web
+    build:
+      context: ./web
     ports:
-      - "5174:80"
+      - "5174:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8001
     depends_on:
       - api
+    networks:
+      - recoMangaTion-network
+
   
   # Service Database (PostgreSQL)
   db:
