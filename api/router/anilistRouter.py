@@ -17,13 +17,36 @@ from requestsAnilistApi.requests import (
     update_studios,
     update_all,
 )
+from repository.anilistImport import (
+    get_anime_short,
+    get_anime,
+    get_manga_short,
+    get_manga,
+)
 
 #Prometheus metrics :
 from metrics import ANIME_LIST_DURATION 
 
 router = APIRouter()
 
-#region FastAPI requests
+#region FastAPI requests    
+@router.get("/short/anime/{id}")
+async def get_short_anime_with_id(id : int):
+    return get_anime_short(id)
+
+@router.get("/short/manga/{id}")
+async def get_short_manga_with_id(id : int):
+    return get_manga_short(id)
+
+@router.get("/anime/{id}")
+async def get_anime_with_id(id : int):
+    return get_anime(id)
+
+@router.get("/manga/{id}")
+async def get_manga_with_id(id : int):
+    return get_manga(id)
+
+#region fetch and update db
 @router.get("/fetch")
 async def get_anime_list():
     await fetch_all()

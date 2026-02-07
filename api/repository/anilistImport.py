@@ -1,7 +1,82 @@
 from fastapi import Depends
 from models import *
 from db import get_db
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, select
+
+def get_anime_short(id: int):
+    for session in get_db():
+        anime = session.get(Anime, id)
+        rep = {}
+        rep["title"] = anime.title_english if not (anime.title_english is None or anime.title_english == "") else anime.title_romaji
+        rep["cover_image"] = anime.cover_image
+        return rep
+
+def get_anime(id:int):
+    for session in get_db():
+        anime = session.get(Anime, id).__dict__
+
+        anime["genres"] = []
+        stmt = select(AnimeGenre).where(AnimeGenre.anime_id == id)
+        for row in session.execute(stmt):
+            anime["genres"].append(row[0].genre_name)
+
+        anime["tags"] = []
+        stmt = select(AnimeTag).where(AnimeTag.anime_id == id)
+        for row in session.execute(stmt):
+            tag = session.get(Tag, row[0].tag_id).__dict__
+            tag["is_specific_spoiler"] = row[0].is_spoiler
+            tag["rank"] = row[0].rank
+            anime["tags"].append(tag)
+
+        anime["staffs"] = []
+        stmt = select(AnimeStaff).where(AnimeStaff.anime_id == id)
+        for row in session.execute(stmt):
+            staff = session.get(Staff, row[0].staff_id).__dict__
+            staff["role"] = row[0].role
+            anime["staffs"].append(staff)
+
+        anime["studios"] = []
+        stmt = select(AnimeStudio).where(AnimeStudio.anime_id == id)
+        for row in session.execute(stmt):
+            anime["studios"].append(session.get(Studio, row[0].studio_id).__dict__)
+
+        return anime
+
+
+def get_manga_short(id: int):
+    for session in get_db():
+        manga = session.get(Manga, id)
+        rep = {}
+        rep["title"] = manga.title_english if not (manga.title_english is None or manga.title_english == "") else manga.title_romaji
+        rep["cover_image"] = manga.cover_image
+        return rep
+    
+def get_manga(id: int):
+    for session in get_db():
+        manga = session.get(Manga, id).__dict__
+
+        manga["genres"] = []
+        stmt = select(MangaGenre).where(MangaGenre.manga_id == id)
+        for row in session.execute(stmt):
+            manga["genres"].append(row[0].genre_name)
+
+        manga["tags"] = []
+        stmt = select(MangaTag).where(MangaTag.manga_id == id)
+        for row in session.execute(stmt):
+            tag = session.get(Tag, row[0].tag_id).__dict__
+            tag["is_specific_spoiler"] = row[0].is_spoiler
+            tag["rank"] = row[0].rank
+            manga["tags"].append(tag)
+
+        manga["staffs"] = []
+        stmt = select(MangaStaff).where(MangaStaff.manga_id == id)
+        for row in session.execute(stmt):
+            staff = session.get(Staff, row[0].staff_id).__dict__
+            staff["role"] = row[0].role
+            manga["staffs"].append(staff)
+
+        return manga
+
 
 
 def insert_media(medias):
