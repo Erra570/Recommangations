@@ -100,19 +100,24 @@ services:
     volumes:
       - ./:/app
       - mlflow_data:/mlflow
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://garage:3900
+      - AWS_ACCESS_KEY_ID=GKa8a756c7ced92f404f91b858
+      - AWS_SECRET_ACCESS_KEY=68be718a8ff9fb597b9ceca24969adbde60e28ecae6aa27fa4e9390fa648167d
+      - AWS_DEFAULT_REGION=us-east-1
     command: >
       sh -lc "
-      pip install -q 'mlflow>=2.9.0' &&
+      pip install -q 'mlflow>=2.9.0' boto3 &&
       mlflow server
       --host 0.0.0.0
       --port 5000
       --backend-store-uri sqlite:////mlflow/mlflow.db
-      --default-artifact-root mlflow-artifacts:/
-      --artifacts-destination /mlflow/artifacts
-      --serve-artifacts
+      --default-artifact-root s3://mlflow/
       "
     ports:
       - "5001:5000"
+    networks:
+      - monitoring
 
 networks:
   recoMangaTion-network:
@@ -125,3 +130,5 @@ volumes:
   grafana_data:
   pgdata:
   mlflow_data:
+
+
