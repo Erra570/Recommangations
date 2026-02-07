@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 
 #Prometheus metrics :
-from time import perf_counter
-from metrics import ANIME_LIST_DURATION, USER_ID_REQUESTS 
+from metrics import USER_ID_REQUESTS 
 
 from requestsAnilistApi.requests import (
     fetch_user_id,
@@ -33,13 +32,4 @@ async def get_user_favorites(username: str):
 async def get_user_entries(username: str, mediaType: str):
     user = await fetch_user_id(username)  
     return await fetch_user_entries_list(user["id"], mediaType)
-
-@router.get("/list/anime")
-async def get_user_anime_list():
-    start = perf_counter() 
-    try:
-        return await fetch_anime_list() 
-    finally:
-        time_tot = perf_counter() - start
-        ANIME_LIST_DURATION.observe(time_tot)
 #endregion

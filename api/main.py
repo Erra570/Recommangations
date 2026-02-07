@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
-from userRouter import router as user_router 
-from anilistRouter import router as anilist_router 
+from router.userRouter import router as user_router 
+from router.anilistRouter import router as anilist_router 
 from fastapi.middleware.cors import CORSMiddleware
 
 

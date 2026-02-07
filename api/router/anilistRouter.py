@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+from time import perf_counter
 from requestsAnilistApi.requests import (
     fetch_anime_list,
     fetch_manga_list,
@@ -18,17 +18,24 @@ from requestsAnilistApi.requests import (
     update_all,
 )
 
+#Prometheus metrics :
+from metrics import ANIME_LIST_DURATION 
+
 router = APIRouter()
 
 #region FastAPI requests
 @router.get("/fetch")
 async def get_anime_list():
     await fetch_all()
-    return "Fetch lauched correctly."
 
 @router.get("/fetch/anime")
 async def get_anime_list():
-    return await fetch_anime_list()
+    start = perf_counter() 
+    try:
+        return await fetch_anime_list() 
+    finally:
+        time_tot = perf_counter() - start
+        ANIME_LIST_DURATION.observe(time_tot)
 
 
 @router.get("/fetch/manga")
@@ -57,7 +64,6 @@ async def get_studios():
 @router.get("/update")
 async def get_anime_list():
     await update_all()
-    return "Fetch lauched correctly."
 
 @router.get("/update/anime")
 async def put_anime_list():
