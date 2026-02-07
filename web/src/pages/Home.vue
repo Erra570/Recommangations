@@ -1,9 +1,9 @@
 <template>
   <div class="container">
-    <h1>Reco Manga (AniList)</h1>
+    <h1>RecoMangaTions</h1>
     <form @submit.prevent="go">
       <label>Pseudo AniList</label>
-      <input v-model.trim="username" placeholder="ex: johndoe" />
+      <input v-model.trim="username" placeholder="ex: jane doe" />
       <button :disabled="!username">Voir mes recommandations</button>
     </form>
 
@@ -23,7 +23,6 @@ const error = ref("");
 async function go() {
   error.value = "";
   try {
-    // petit check optionnel : vérifier que l’utilisateur existe
     await api.getUser(username.value);
     router.push(`/reco/${encodeURIComponent(username.value)}`);
   } catch (e) {

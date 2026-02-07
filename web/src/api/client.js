@@ -4,18 +4,17 @@ async function request(path) {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API error ${res.status}: ${text || res.statusText}`);
+    throw new Error(text || `HTTP ${res.status}`);
   }
   return res.json();
 }
 
 export const api = {
-  getUser: (username) => request(`/api/user/${encodeURIComponent(username)}`),
-  getUserFavorites: (username) => request(`/api/user/${encodeURIComponent(username)}/favorites`),
-  getUserEntries: (username, mediaType) =>
-    request(`/api/user/${encodeURIComponent(username)}/entries/${encodeURIComponent(mediaType)}`),
+  getRecoIds(username, mediaType = "anime", limit = 12) {
+    return request(`/api/user/${encodeURIComponent(username)}/recommendations/${mediaType}?limit=${limit}`);
+  },
 
-  // Pour quand on aura un endpoint recommandation faut juste pas que j'oublie en gros
-  // getRecommendations: (username) =>
-  //  request(`/api/user/${encodeURIComponent(username)}/recommendations`),
+  getShortById(mediaType, id) {
+    return request(`/api/anilistContent/short/${mediaType}/${id}`);
+  },
 };

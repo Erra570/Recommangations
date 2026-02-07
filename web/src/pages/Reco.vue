@@ -1,71 +1,171 @@
 <template>
   <div class="container">
     <div class="top">
-      <h2>Recommandations pour {{ username }}</h2>
-      <button @click="reload" :disabled="loading">Rafraîchir</button>
+      <h2>Recommandations ({{ mediaType }}) pour {{ username }}</h2>
+
+      <div class="controls">
+        <select v-model="mediaType" @change="loadAll" :disabled="loading">
+          <option value="anime">anime</option>
+          <option value="manga">manga</option>
+        </select>
+
+        <button @click="loadAll" :disabled="loading">Rafraîchir</button>
+
+        <button
+          class="toggle"
+          @click="titleMode = titleMode === 'romaji' ? 'english' : 'romaji'"
+          :disabled="loading"
+        >
+          Titres : {{ titleMode === "romaji" ? "Romaji" : "English" }}
+        </button>
+
+        <label class="debugToggle">
+          <input type="checkbox" v-model="showDebug" />
+          Debug
+        </label>
+      </div>
     </div>
 
     <p v-if="loading">Chargement…</p>
     <p v-if="error" class="error">{{ error }}</p>
 
-    <div v-if="!loading && recos.length" class="grid">
-      <article v-for="m in recos" :key="m.id" class="card">
-        <img v-if="m.coverImage" :src="m.coverImage" :alt="m.title" />
-        <h3>{{ m.title }}</h3>
-        <p class="meta">
-          <span v-if="m.score">Score: {{ m.score }}</span>
-          <span v-if="m.genres?.length"> • {{ m.genres.join(", ") }}</span>
-        </p>
-        <p v-if="m.description" class="desc" v-html="m.description"></p>
-        <a v-if="m.siteUrl" :href="m.siteUrl" target="_blank" rel="noreferrer">Voir sur AniList</a>
-      </article>
+
+    <div v-if="!loading && items.length" class="grid">
+      <MediaCard
+        v-for="it in items"
+        :key="it.id"
+        :item="it"
+        :titleMode="titleMode"
+      />
     </div>
 
-    <p v-if="!loading && !recos.length && !error">Aucune recommandation.</p>
+    <p v-if="!loading && !items.length && !error">Aucune recommandation.</p>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
+import MediaCard from "../components/Cards.vue";
 import { api } from "../api/client";
 
 const props = defineProps({
   username: { type: String, required: true },
 });
 
+const username = props.username;
+
+const mediaType = ref("anime");
+const titleMode = ref("romaji"); // "romaji" | "english"
 const loading = ref(false);
 const error = ref("");
-const recos = ref([]);
 
-async function load() {
+const ids = ref([]);
+const items = ref([]);
+
+const showDebug = ref(false);
+const recoPayload = ref(null);
+const firstRawShort = ref(null);
+const failedShorts = ref([]);
+
+const apiBase = computed(() => import.meta.env.VITE_API_BASE_URL || "(vide)");
+
+
+function normalizeShort(raw, mType, fallbackId) {
+  if (!raw) return null;
+
+  const id = raw.id ?? fallbackId;
+  if (!id) return null;
+
+  const titleRomaji = raw.title_romaji ?? raw.title ?? null;
+  const titleEnglish = raw.title_english ?? raw.title ?? null;
+
+  const coverImage = raw.cover_image ?? null;
+
+  return {
+    id,
+    mediaType: mType,
+
+    titleRomaji,
+    titleEnglish,
+    coverImage,
+
+    siteUrl: `https://anilist.co/${mType}/${id}`,
+
+    meanScore: raw.mean_score ?? null,
+    episodes: raw.episodes ?? null,
+  };
+}
+
+async function loadAll() {
   loading.value = true;
   error.value = "";
-  recos.value = [];
+  ids.value = [];
+  items.value = [];
+  recoPayload.value = null;
+  firstRawShort.value = null;
+  failedShorts.value = [];
+
   try {
-    const data = await api.getRecommendations(props.username);
-    // Attends-toi idéalement à un tableau normalisé côté backend
-    recos.value = Array.isArray(data) ? data : (data.items || []);
+
+    const reco = await api.getRecoIds(username, mediaType.value, 12);
+    recoPayload.value = reco;
+
+    const list = Array.isArray(reco?.ids) ? reco.ids : [];
+    ids.value = list;
+
+    if (!list.length) {
+      items.value = [];
+      return;
+    }
+
+
+    const results = await Promise.all(
+      list.map(async (id) => {
+        try {
+          const raw = await api.getShortById(mediaType.value, id);
+          return { id, raw };
+        } catch (e) {
+          failedShorts.value.push({ id, error: e?.message || String(e) });
+          return { id, raw: null };
+        }
+      })
+    );
+
+    const ok = results.filter((r) => r.raw);
+
+    if (ok.length) {
+      firstRawShort.value = ok[0].raw;
+    }
+
+    items.value = ok
+      .map((r) => normalizeShort(r.raw, mediaType.value, r.id))
+      .filter(Boolean);
+
   } catch (e) {
-    error.value = "Impossible de récupérer les recommandations.";
+    console.error(e);
+    error.value =
+      `Impossible de charger les recommandations: ${e?.message || "erreur inconnue"}`;
   } finally {
     loading.value = false;
   }
 }
 
-function reload() {
-  load();
-}
-
-onMounted(load);
+onMounted(loadAll);
 </script>
 
 <style scoped>
 .container { max-width: 1100px; margin: 30px auto; padding: 0 16px; }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
-.card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
-.card img { width: 100%; height: 320px; object-fit: cover; border-radius: 8px; }
-.meta { font-size: 0.9rem; opacity: 0.8; }
-.desc { font-size: 0.9rem; opacity: 0.9; max-height: 6.5em; overflow: hidden; }
+.top { display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap; }
+.controls { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+.toggle { opacity: .95; }
+.debugToggle { display:flex; gap: 6px; align-items:center; font-size: 0.9rem; opacity: .9; }
 .error { color: #c00; }
+
+.grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
 </style>
