@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 #Prometheus metrics :
-from metrics import USER_ID_REQUESTS 
+from metrics import USER_ID_REQUESTS, ANILIST_ERRORS 
 
 from requestsAnilistApi.requests import (
     fetch_user_id,

@@ -25,7 +25,13 @@ from repository.anilistImport import (
 )
 
 #Prometheus metrics :
-from metrics import ANIME_LIST_DURATION 
+from metrics import (
+    ANIME_LIST_DURATION, 
+    DATABASE_UPDATE_ALL_LAST_DURATION,
+    DATABASE_UPDATE_ALL_DURATION,
+    DATABASE_UPDATE_ANIME_DURATION,
+    DATABASE_UPDATE_MANGA_DURATION 
+)
 
 router = APIRouter()
 
@@ -86,17 +92,33 @@ async def get_studios():
 
 @router.get("/update")
 async def get_anime_list():
-    await update_all()
+    start = perf_counter() 
+    try:
+        await update_all()
+    finally:
+        time_tot = perf_counter() - start
+        DATABASE_UPDATE_ALL_DURATION.observe(time_tot)
+        DATABASE_UPDATE_ALL_LAST_DURATION.set(time_tot)
+    
 
 @router.get("/update/anime")
 async def put_anime_list():
-    return await update_anime_list()
+    start = perf_counter() 
+    try:
+        return await update_anime_list()
+    finally:
+        time_tot = perf_counter() - start
+        DATABASE_UPDATE_ANIME_DURATION.observe(time_tot)
 
 
 @router.get("/update/manga")
 async def get_manga_list():
-    return await update_manga_list()
-
+    start = perf_counter() 
+    try:
+        return await update_manga_list()
+    finally:
+        time_tot = perf_counter() - start
+        DATABASE_UPDATE_MANGA_DURATION.observe(time_tot)
 
 @router.get("/update/tag")
 async def get_tag_list():

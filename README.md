@@ -21,3 +21,6 @@ En cas de changement de la structure de la base de donnée dans le code :
 docker compose exec api alembic -c alembic.ini revision --autogenerate -m "description_de_votre_migration"
 docker compose exec api alembic -c alembic.ini upgrade head
 ```
+## Dashboard Grafana : 
+Pour afficher le dashboard Grafana, rendez vous sur http://localhost:3002
+Puis dans Dashboard -> New -> Import, déposez le fichier grafana/GrafanaDashboard_RecoMangaTion.json
