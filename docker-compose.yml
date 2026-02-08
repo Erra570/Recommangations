@@ -7,22 +7,29 @@ services:
     container_name: recoMangaTion-api
     ports:
       - "8001:8000"
+    volumes:
+      - ./api:/app
+      - mlflow_data:/mlflow
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+psycopg://api:api@db:5432/db_anilist
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/reco/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 35s
     networks:
       - recoMangaTion-network
-      - monitoring 
+      - monitoring
+ 
 
   # Service Frontend Web
   web:
@@ -119,26 +126,20 @@ services:
     container_name: mlflow-server
     working_dir: /app
     volumes:
-      - ./:/app
       - mlflow_data:/mlflow
-    environment:
-      - MLFLOW_S3_ENDPOINT_URL=http://garage:3900
-      - AWS_ACCESS_KEY_ID=GKa8a756c7ced92f404f91b858
-      - AWS_SECRET_ACCESS_KEY=68be718a8ff9fb597b9ceca24969adbde60e28ecae6aa27fa4e9390fa648167d
-      - AWS_DEFAULT_REGION=us-east-1
     command: >
       sh -lc "
-      pip install -q 'mlflow>=2.9.0' boto3 &&
+      pip install -q 'mlflow>=2.9.0' &&
       mlflow server
       --host 0.0.0.0
       --port 5000
       --backend-store-uri sqlite:////mlflow/mlflow.db
-      --default-artifact-root s3://mlflow/
+      --default-artifact-root file:///mlflow/artifacts
       "
     ports:
       - "5001:5000"
     networks:
-      - monitoring
+    - monitoring
 
 networks:
   recoMangaTion-network:
@@ -151,5 +152,3 @@ volumes:
   grafana_data:
   pgdata:
   mlflow_data:
-
-

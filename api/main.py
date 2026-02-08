@@ -3,8 +3,11 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from router.userRouter import router as user_router 
 from router.anilistRouter import router as anilist_router 
 from fastapi.middleware.cors import CORSMiddleware
+from model_store import load_prod_models
+from model_store import get
+import logging
 
-
+logger = logging.getLogger("uvicorn")
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
@@ -33,12 +36,23 @@ async def health_check_root():
     return {"status": "ok"}
 #endregion
 
-
+#region - - - Events :
+@app.on_event("startup")
+def startup():
+    try:
+        load_prod_models()
+    except Exception as e:
+        logger.exception(f"MLflow load failed at startup: {e}")
+#endregion
 
 #region - - - Autres routers :
 api_router.include_router(user_router, prefix="/user", tags=["UserRequests"])
 api_router.include_router(anilist_router, prefix="/anilistContent", tags=["ContentRequests"])
-
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics") # Prometheus metrics (ex: /metrics)
+
+@api_router.get("/reco/ping")
+def reco_ping(media: str):
+    model, vec = get(media)
+    return {"ok": True, "media": media, "n_features": len(vec.feature_names_)}
 #endregion

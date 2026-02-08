@@ -1,0 +1,8 @@
+DATABASE_URL=postgresql+psycopg://api:api@db:5432/db_anilist
+
+MLFLOW_TRACKING_URI=http://localhost:5001
+
+MLFLOW_S3_ENDPOINT_URL=http://garage:3900
+AWS_ACCESS_KEY_ID=GKa8a756c7ced92f404f91b858
+AWS_SECRET_ACCESS_KEY=68be718a8ff9fb597b9ceca24969adbde60e28ecae6aa27fa4e9390fa648167d
+AWS_DEFAULT_REGION=us-east-1
