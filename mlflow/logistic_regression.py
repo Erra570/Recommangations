@@ -40,8 +40,6 @@ EXPERIMENT_NAME = f"reco-{MEDIA.lower()}"
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
-TAG_MIN_DF = int(os.getenv("TAG_MIN_DF", "10"))
-
 
 def log_run_to_uri(
     tracking_uri: str,
@@ -83,26 +81,35 @@ def log_run_to_uri(
         return run_id
 
 
-def load_allowed_tags(engine, media: str, min_df: int) -> set:
+def load_allowed_tags(engine, media: str, top_k: int = 300) -> set:
     if media == "ANIME":
         q = """
-            SELECT t.name AS tag_name, COUNT(*)::int AS c
+            SELECT DISTINCT ON (at.tag_id)
+                   t.name AS tag_name,
+                   at.rank
             FROM anime_tag at
             JOIN tag t ON t.id = at.tag_id
-            GROUP BY t.name
+            ORDER BY at.tag_id, at.rank DESC
+            LIMIT :top_k
         """
     else:
         q = """
-            SELECT t.name AS tag_name, COUNT(*)::int AS c
+            SELECT DISTINCT ON (mt.tag_id)
+                   t.name AS tag_name,
+                   mt.rank
             FROM manga_tag mt
             JOIN tag t ON t.id = mt.tag_id
-            GROUP BY t.name
+            ORDER BY mt.tag_id, mt.rank DESC
+            LIMIT :top_k
         """
 
     with engine.connect() as c:
-        tag_rows = c.execute(text(q)).mappings().all()
+        tag_rows = c.execute(
+            text(q),
+            {"top_k": top_k}
+        ).mappings().all()
 
-    allowed = {r["tag_name"] for r in tag_rows if (r["c"] or 0) >= min_df}
+    allowed = {r["tag_name"] for r in tag_rows}
     return allowed
 
 
@@ -174,8 +181,9 @@ if len(rows) < 50:
 
 print(f"{MEDIA} rows loaded: {len(rows)}")
 
-allowed_tags = load_allowed_tags(engine, MEDIA, TAG_MIN_DF)
-print(f"{MEDIA} allowed tags (min_df={TAG_MIN_DF}): {len(allowed_tags)}")
+TOP_K_TAGS = int(os.getenv("TOP_K_TAGS", "300"))
+allowed_tags = load_allowed_tags(engine, MEDIA, top_k=TOP_K_TAGS)
+print(f"{MEDIA} allowed tags (top_k={TOP_K_TAGS}): {len(allowed_tags)}")
 
 
 # ======================
@@ -186,8 +194,7 @@ y = []
 
 for r in rows:
     label = 1 if (
-        (r["score"] is not None and r["score"] >= 7)
-        or r["status"] == "COMPLETED"
+        (r["status"] == "COMPLETED" or r["status"] == "READING") and (r["score"] is None or r["score"] >= 7)
     ) else 0
 
     feats = {
