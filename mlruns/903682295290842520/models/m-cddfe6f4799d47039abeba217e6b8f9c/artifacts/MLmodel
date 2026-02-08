@@ -1,0 +1,23 @@
+artifact_path: file:///home/cytech/Recommangations/mlruns/903682295290842520/models/m-cddfe6f4799d47039abeba217e6b8f9c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.10.12
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+    skops_trusted_types: null
+mlflow_version: 3.9.0
+model_id: m-cddfe6f4799d47039abeba217e6b8f9c
+model_size_bytes: 3854
+model_uuid: m-cddfe6f4799d47039abeba217e6b8f9c
+prompts: null
+run_id: 3740df705d8b4aaeab38779188cdf629
+utc_time_created: '2026-02-08 23:18:45.988879'

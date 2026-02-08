@@ -3,7 +3,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from router.userRouter import router as user_router 
 from router.anilistRouter import router as anilist_router 
 from fastapi.middleware.cors import CORSMiddleware
-from model_store import load_prod_models
+from model_store import load_models_from_disk
 from model_store import get
 import logging
 
@@ -39,10 +39,7 @@ async def health_check_root():
 #region - - - Events :
 @app.on_event("startup")
 def startup():
-    try:
-        load_prod_models()
-    except Exception as e:
-        logger.exception(f"MLflow load failed at startup: {e}")
+    load_models_from_disk()
 #endregion
 
 #region - - - Autres routers :

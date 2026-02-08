@@ -40,6 +40,8 @@ EXPERIMENT_NAME = f"reco-{MEDIA.lower()}"
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
+TAG_MIN_DF = int(os.getenv("TAG_MIN_DF", "10"))
+
 
 def log_run_to_uri(
     tracking_uri: str,
@@ -52,10 +54,6 @@ def log_run_to_uri(
     acc: float,
     f1: float,
 ) -> str:
-    """
-    Log un run complet (params/metrics/model/vectorizer) dans UN tracking store.
-    Retourne le run_id.
-    """
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
@@ -66,6 +64,7 @@ def log_run_to_uri(
         mlflow.log_param("model", "logistic_regression")
         mlflow.log_param("n_features", int(n_features))
         mlflow.log_param("n_samples", int(n_samples))
+        mlflow.log_param("tag_min_df", int(TAG_MIN_DF))
 
         mlflow.set_tag("deploy", "prod")
         mlflow.set_tag("media", media)
@@ -84,6 +83,29 @@ def log_run_to_uri(
         return run_id
 
 
+def load_allowed_tags(engine, media: str, min_df: int) -> set:
+    if media == "ANIME":
+        q = """
+            SELECT t.name AS tag_name, COUNT(*)::int AS c
+            FROM anime_tag at
+            JOIN tag t ON t.id = at.tag_id
+            GROUP BY t.name
+        """
+    else:
+        q = """
+            SELECT t.name AS tag_name, COUNT(*)::int AS c
+            FROM manga_tag mt
+            JOIN tag t ON t.id = mt.tag_id
+            GROUP BY t.name
+        """
+
+    with engine.connect() as c:
+        tag_rows = c.execute(text(q)).mappings().all()
+
+    allowed = {r["tag_name"] for r in tag_rows if (r["c"] or 0) >= min_df}
+    return allowed
+
+
 # ======================
 # SQL QUERY
 # ======================
@@ -97,10 +119,13 @@ if MEDIA == "ANIME":
           ua.status,
           a.mean_score,
           a.favourites,
-          COALESCE(array_agg(ag.genre_name), '{}') AS genres
+          COALESCE(array_agg(DISTINCT ag.genre_name), '{}') AS genres,
+          COALESCE(array_agg(DISTINCT t.name), '{}') AS tags
         FROM user_anime ua
         JOIN anime a ON a.id = ua.anime_id
         LEFT JOIN anime_genre ag ON ag.anime_id = a.id
+        LEFT JOIN anime_tag at ON at.anime_id = a.id
+        LEFT JOIN tag t ON t.id = at.tag_id
         GROUP BY
           ua.user_id,
           ua.anime_id,
@@ -120,10 +145,13 @@ else:
           um.status,
           m.mean_score,
           m.favourites,
-          COALESCE(array_agg(mg.genre_name), '{}') AS genres
+          COALESCE(array_agg(DISTINCT mg.genre_name), '{}') AS genres,
+          COALESCE(array_agg(DISTINCT t.name), '{}') AS tags
         FROM user_manga um
         JOIN manga m ON m.id = um.manga_id
         LEFT JOIN manga_genre mg ON mg.manga_id = m.id
+        LEFT JOIN manga_tag mt ON mt.manga_id = m.id
+        LEFT JOIN tag t ON t.id = mt.tag_id
         GROUP BY
           um.user_id,
           um.manga_id,
@@ -146,6 +174,9 @@ if len(rows) < 50:
 
 print(f"{MEDIA} rows loaded: {len(rows)}")
 
+allowed_tags = load_allowed_tags(engine, MEDIA, TAG_MIN_DF)
+print(f"{MEDIA} allowed tags (min_df={TAG_MIN_DF}): {len(allowed_tags)}")
+
 
 # ======================
 # BUILD DATASET
@@ -161,13 +192,16 @@ for r in rows:
 
     feats = {
         "mean_score": float(r["mean_score"] or 0),
-        "log_favourites": np.log1p(r["favourites"] or 0),
-        "progress": r["progress"] or 0,
-        f"status_{r['status']}": 1,
+        "log_favourites": float(np.log1p(r["favourites"] or 0)),
     }
 
-    for g in r["genres"]:
-        feats[f"genre_{g}"] = 1
+    for g in (r.get("genres") or []):
+        if g:
+            feats[f"genre_{g}"] = 1
+
+    for t in (r.get("tags") or []):
+        if t and t in allowed_tags:
+            feats[f"tag_{t}"] = 1
 
     X_dict.append(feats)
     y.append(label)
@@ -219,6 +253,11 @@ n_features = X.shape[1]
 n_samples = X.shape[0]
 
 run_ids = {}
+OUT_DIR = ROOT / "mlflow_outputs"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+joblib.dump(model, OUT_DIR / f"logreg_{MEDIA.lower()}.joblib")
+joblib.dump(vec, OUT_DIR / f"vectorizer_{MEDIA.lower()}.joblib")
 
 local_run_id = log_run_to_uri(
     tracking_uri=LOCAL_TRACKING_URI,
