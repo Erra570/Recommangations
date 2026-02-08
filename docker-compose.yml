@@ -10,6 +10,7 @@ services:
     volumes:
       - ./api:/app
       - mlflow_data:/mlflow
+      - ./mlruns:/mlruns
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+psycopg://api:api@db:5432/db_anilist
@@ -127,6 +128,7 @@ services:
     working_dir: /app
     volumes:
       - mlflow_data:/mlflow
+      - ./mlruns:/mlruns
     command: >
       sh -lc "
       pip install -q 'mlflow>=2.9.0' &&
