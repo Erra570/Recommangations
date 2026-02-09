@@ -12,3 +12,4 @@ numpy
 datetime
 pytest
 mlflow>=2.9.0
+implicit

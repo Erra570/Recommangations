@@ -114,10 +114,10 @@ def fetch_entries(user_id: int, media_type: str):
 # =========================
 def upsert_user(conn, username: str, anilist_id: int):
     conn.execute(text("""
-        INSERT INTO users (username, anilist_user_id)
+        INSERT INTO users (username, id)
         VALUES (:u, :aid)
         ON CONFLICT (username)
-        DO UPDATE SET anilist_user_id = EXCLUDED.anilist_user_id
+        DO UPDATE SET id = EXCLUDED.id
     """), {"u": username, "aid": anilist_id})
 
     uid = conn.execute(

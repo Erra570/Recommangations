@@ -117,15 +117,15 @@ async def get_reco_ids(username: str, mediaType: MediaType, limit: int = 12):
     user = await fetch_user_id(username)
     anilist_user_id = int(user["id"])
   except Exception as e:
-    logger.exception(f"[RECO] fetch_user_id failed for {username}: {e}")
+    logging.logger.exception(f"[RECO] fetch_user_id failed for {username}: {e}")
     raise HTTPException(status_code=400, detail="Pseudo AniList invalide ou AniList indisponible")
 
   # 2) modèle + vec
   try:
     model, vec = get_model_and_vec(str(mediaType))
-    logger.info(f"[RECO] model ok media={mediaType} n_features={len(vec.feature_names_)}")
+    logging.logger.info(f"[RECO] model ok media={mediaType} n_features={len(vec.feature_names_)}")
   except Exception as e:
-    logger.exception(f"[RECO] model_store.get failed media={mediaType}: {e}")
+    logging.logger.exception(f"[RECO] model_store.get failed media={mediaType}: {e}")
     raise HTTPException(status_code=500, detail=f"Modèle non chargé: {e}")
 
   # 3) DB candidats non vus
@@ -136,7 +136,7 @@ async def get_reco_ids(username: str, mediaType: MediaType, limit: int = 12):
       else:
         cand_rows = c.execute(text(SQL_CANDIDATES_MANGA), {"user_id": anilist_user_id, "n": 2000}).mappings().all()
   except Exception as e:
-    logger.exception(f"[RECO] DB query failed: {e}")
+    logging.logger.exception(f"[RECO] DB query failed: {e}")
     raise HTTPException(status_code=500, detail=f"Erreur DB: {e}")
 
   if not cand_rows:
