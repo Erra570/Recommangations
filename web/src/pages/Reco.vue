@@ -10,19 +10,6 @@
         </select>
 
         <button @click="loadAll" :disabled="loading">Rafraîchir</button>
-
-        <button
-          class="toggle"
-          @click="titleMode = titleMode === 'romaji' ? 'english' : 'romaji'"
-          :disabled="loading"
-        >
-          Titres : {{ titleMode === "romaji" ? "Romaji" : "English" }}
-        </button>
-
-        <label class="debugToggle">
-          <input type="checkbox" v-model="showDebug" />
-          Debug
-        </label>
       </div>
     </div>
 
@@ -61,8 +48,6 @@ const error = ref("");
 
 const ids = ref([]);
 const items = ref([]);
-
-const showDebug = ref(false);
 const recoPayload = ref(null);
 const firstRawShort = ref(null);
 const failedShorts = ref([]);
@@ -158,7 +143,6 @@ onMounted(loadAll);
 .top { display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap; }
 .controls { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
 .toggle { opacity: .95; }
-.debugToggle { display:flex; gap: 6px; align-items:center; font-size: 0.9rem; opacity: .9; }
 .error { color: #c00; }
 
 .grid {
