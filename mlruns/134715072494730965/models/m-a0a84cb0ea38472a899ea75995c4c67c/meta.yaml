@@ -1,0 +1,10 @@
+artifact_location: file:///home/cytech/Recommangations/mlruns/134715072494730965/models/m-a0a84cb0ea38472a899ea75995c4c67c/artifacts
+creation_timestamp: 1770665228367
+experiment_id: '134715072494730965'
+last_updated_timestamp: 1770665231507
+model_id: m-a0a84cb0ea38472a899ea75995c4c67c
+model_type: null
+name: model
+source_run_id: 069694995a15411e9abc86872b0d5004
+status: 2
+status_message: null

@@ -1,0 +1,14 @@
+artifact_uri: file:///home/cytech/Recommangations/mlruns/134715072494730965/a3d1b9f92253497ebf6d6126efd9273e/artifacts
+end_time: 1770650217411
+entry_point_name: ''
+experiment_id: '134715072494730965'
+lifecycle_stage: active
+run_id: a3d1b9f92253497ebf6d6126efd9273e
+run_name: logreg-manga
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1770650214277
+status: 3
+tags: []
+user_id: cytech

@@ -4,125 +4,127 @@ import re
 from datetime import datetime
 
 def list_processing(list: dict):
-    #patern for match staff 
-    pattern = re.compile("^(Story|Art|Story & Art|Author|Art & Story|Script|Original Work|Original Story|Original Creator|Director)( .+)*$")
+	#patern for match staff 
+	pattern = re.compile("^(Story|Art|Story & Art|Author|Art & Story|Script|Original Work|Original Story|Original Creator|Director)( .+)*$")
 
-    medias = list["Page"]["media"]
-    rm_list = []
-    for i, media in enumerate(medias):
-        if media["stats"]["scoreDistribution"] == None or media["startDate"]["year"] == None:
-            rm_list.append(i)
-            #print(media)
-        else :
-            #date processing
-            day = media["startDate"]["day"] if media["startDate"]["day"] is not None else 1
-            month = media["startDate"]["month"] if media["startDate"]["month"] is not None else 1
-            try :
-                media["startDate"] = datetime(media["startDate"]["year"], month, day)
-            except:
-                media["startDate"] = datetime(media["startDate"]["year"], month, 1)
+	medias = list["Page"]["media"]
+	rm_list = []
+	for i, media in enumerate(medias):
+		if media["stats"]["scoreDistribution"] == None or media["startDate"]["year"] == None:
+			rm_list.append(i)
+			#print(media)
+		else :
+			#date processing
+			day = media["startDate"]["day"] if media["startDate"]["day"] is not None else 1
+			month = media["startDate"]["month"] if media["startDate"]["month"] is not None else 1
+			try :
+				media["startDate"] = datetime(media["startDate"]["year"], month, day)
+			except:
+				media["startDate"] = datetime(media["startDate"]["year"], month, 1)
 
-            # tag processing
-            j = 0
-            while j < len(media["tags"]):
-                if media["tags"][j]["rank"] < 40:
-                    media["tags"].pop(j)
-                else:
-                    j += 1
-            
-            # score processing
-            nb = 0
-            media["meanScore"] = 0
-            media["scoreVariance"] = 0
-            for score in media["stats"]["scoreDistribution"]:
-                nb += score["amount"]
-                media["meanScore"] += score["score"] * score["amount"]
-            media["meanScore"] = ((int) (media["meanScore"] / nb)) if nb > 0 else None
-            
-            for score in media["stats"]["scoreDistribution"]:
-                media["scoreVariance"] += ((score["score"] - media["meanScore"]) ** 2) * score["amount"]
-            media["scoreVariance"] = (int) (np.sqrt(media["scoreVariance"] / nb)) if nb > 0 else None
+			# tag processing
+			j = 0
+			while j < len(media["tags"]):
+				if media["tags"][j]["rank"] < 40:
+					media["tags"].pop(j)
+				else:
+					j += 1
+			
+			# score processing
+			nb = 0
+			media["meanScore"] = 0
+			media["scoreVariance"] = 0
+			for score in media["stats"]["scoreDistribution"]:
+				nb += score["amount"]
+				media["meanScore"] += score["score"] * score["amount"]
+			media["meanScore"] = ((int) (media["meanScore"] / nb)) if nb > 0 else None
+			
+			for score in media["stats"]["scoreDistribution"]:
+				media["scoreVariance"] += ((score["score"] - media["meanScore"]) ** 2) * score["amount"]
+			media["scoreVariance"] = (int) (np.sqrt(media["scoreVariance"] / nb)) if nb > 0 else None
 
-            # supprime l'entrée s'il n'y a eu aucune note 
-            if nb < 0:
-                rm_list.append(i)
+			# supprime l'entrée s'il n'y a eu aucune note 
+			if nb < 0:
+				rm_list.append(i)
 
-            # status processing
-            media["completedWatching"] = 0
-            media["planning"] = 0
-            media["droppedPaused"] = 0
-            for statu in media["stats"]["statusDistribution"]:
-                if statu["status"] in ["CURRENT", "COMPLETED"]:
-                    media["completedWatching"] += statu["amount"]
-                elif statu["status"] == "PLANNING":
-                    media["planning"] += statu["amount"]
-                elif statu["status"] in ["DROPPED", "PAUSED"]:
-                    media["droppedPaused"] += statu["amount"]
-            media.pop("stats")
+			# status processing
+			media["completedWatching"] = 0
+			media["planning"] = 0
+			media["droppedPaused"] = 0
+			for statu in media["stats"]["statusDistribution"]:
+				if statu["status"] in ["CURRENT", "COMPLETED"]:
+					media["completedWatching"] += statu["amount"]
+				elif statu["status"] == "PLANNING":
+					media["planning"] += statu["amount"]
+				elif statu["status"] in ["DROPPED", "PAUSED"]:
+					media["droppedPaused"] += statu["amount"]
+			media.pop("stats")
 
-            #staff processing
-            media["staffs"] = []
-            for i in range(len(media["staff"]["edges"])):
-                if pattern.match(media["staff"]["edges"][i]["role"]):
-                    staff = {"id": media["staff"]["nodes"][i]["id"], "role": media["staff"]["edges"][i]["role"]}
-                    media["staffs"].append(staff)
-            media.pop("staff")
+			#staff processing
+			media["staffs"] = []
+			for i in range(len(media["staff"]["edges"])):
+				if pattern.match(media["staff"]["edges"][i]["role"]):
+					staff = {"id": media["staff"]["nodes"][i]["id"], "role": media["staff"]["edges"][i]["role"]}
+					media["staffs"].append(staff)
+			media.pop("staff")
 
-            #studio processing
-            if "studios" in media:
-                media["studio_old"] = media["studios"]
-                media["studios"] = []
-                for studio in media["studio_old"]["nodes"]:
-                    media["studios"].append(studio["id"])
-                media.pop("studio_old")
+			#studio processing
+			if "studios" in media:
+				media["studio_old"] = media["studios"]
+				media["studios"] = []
+				for studio in media["studio_old"]["nodes"]:
+					media["studios"].append(studio["id"])
+				media.pop("studio_old")
 
-            #cover url 
-            media["coverImage"] = media["coverImage"]["large"]
+			#cover url 
+			media["coverImage"] = media["coverImage"]["large"]
 
-    if len(rm_list) > 0:
-        for i in reversed(rm_list):
-            medias.pop(i)
+	if len(rm_list) > 0:
+		for i in reversed(rm_list):
+			medias.pop(i)
 
-    return medias
+	return medias
 
 # listMedia est soit la liste des media MANGA, soit ANIME (pas les 2)
 def list_processing_user_infos(listMedia: dict, listFav: dict, mediaType: str):
-    formatted_list = []
+	formatted_list = []
 
-    # Booléens des oeuvres mises en favories :
-    tmp = listFav["User"]["favourites"][mediaType]["nodes"]
-    fav_ids = {node["id"] for node in tmp}
+	# Booléens des oeuvres mises en favories :
+	tmp = listFav["User"]["favourites"][mediaType]["nodes"]
+	fav_ids = {node["id"] for node in tmp}
 
-    oeuvres = listMedia["MediaListCollection"]["lists"]      
-    for list_by_entriesStatus in oeuvres:
-        tmp_list = list_by_entriesStatus["entries"] # 1ère list des entries : COMPLETED, 2e : PAUSED, etc.
+	oeuvres = listMedia["MediaListCollection"]["lists"]	  
+	for list_by_entriesStatus in oeuvres:
+		tmp_list = list_by_entriesStatus["entries"] # 1ère list des entries : COMPLETED, 2e : PAUSED, etc.
 
-        for item in tmp_list:
-            # Date :
-            if item["updatedAt"] != 0 :
-                tmp = datetime.fromtimestamp(item["updatedAt"])
-                date = str(tmp.day)+"-"+str(tmp.month)+"-"+str(tmp.year)
-            elif item["completedAt"]["month"] is None:
-                date = str(item["completedAt"]["day"])+"-"+str(item["completedAt"]["month"])+"-"+str(item["completedAt"]["year"])
-            else :
-                date = str(item["startDate"]["day"])+"-"+str(item["startDate"]["month"])+"-"+str(item["startDate"]["year"])
-            
-            isFavorite = item["media"]["id"] in fav_ids
-            # Other infos :
-            formatted_entry = {
-                "id": item["media"]["id"],
-                "isFavorite": isFavorite, 
-                "status": item["status"],
-                "score": item["score"],
-                "progress": item["progress"],
-                "repeat": item["repeat"],
-                "date": date
-            }
+		for item in tmp_list:
+			# Date :
+			if item["updatedAt"] != 0 :
+				tmp = datetime.fromtimestamp(item["updatedAt"])
+				date = str(tmp.day)+"-"+str(tmp.month)+"-"+str(tmp.year)
+			elif item["completedAt"]["month"] is None:
+				date = str(item["completedAt"]["day"])+"-"+str(item["completedAt"]["month"])+"-"+str(item["completedAt"]["year"])
+			elif "startDate" in item:
+				date = str(item["startDate"]["day"])+"-"+str(item["startDate"]["month"])+"-"+str(item["startDate"]["year"])
+			
+			isFavorite = item["media"]["id"] in fav_ids
+			# Other infos :
+			formatted_entry = {
+				"id": item["media"]["id"],
+				"isFavorite": isFavorite, 
+				"status": item["status"],
+				"score": item["score"],
+				"progress": item["progress"],
+				"repeat": item["repeat"],
+				"date": date
+			}
 
-            a=item["media"]["id"]
-            # print(f"- - -Id : {a}")
-            formatted_list.append(formatted_entry) 
-    return formatted_list
+			a=item["media"]["id"]
+			# print(f"- - -Id : {a}")
+			if date and date != "None-None-None":
+				formatted_list.append(formatted_entry) 
+				  
+	return formatted_list
 
 def anime_to_entry(media):
 	anime = Anime()
@@ -282,3 +284,42 @@ def studio_to_entries(studios):
 		studio.name = m_studio["name"]
 		rep.append(studio)
 	return rep
+
+def user_to_entries(m_user):
+	user = User()
+	user.id = m_user["id"]
+	user.username = m_user["name"]
+	
+	user_animes = []
+	for m_user_anime in m_user["anime"]:
+		user_anime = UserAnime()
+		user_anime.anime_id = m_user_anime["id"]
+		user_anime.user_id = m_user["id"]
+			
+		user_anime.favourite = m_user_anime["isFavorite"]
+		user_anime.status = m_user_anime["status"]
+		user_anime.score = m_user_anime["score"]
+		user_anime.progress = m_user_anime["progress"]
+		user_anime.repeat = m_user_anime["repeat"]
+		user_anime.last_watched = datetime.strptime(m_user_anime["date"], '%d-%m-%Y')
+		
+		user_animes.append(user_anime)
+	
+	user_mangas = []
+	for m_user_manga in m_user["manga"]:
+		user_manga = UserManga()
+		user_manga.manga_id = m_user_manga["id"]
+		user_manga.user_id = m_user["id"]
+			
+		user_manga.favourite = m_user_manga["isFavorite"]
+		user_manga.status = m_user_manga["status"]
+		user_manga.score = m_user_manga["score"]
+		user_manga.progress = m_user_manga["progress"]
+		user_manga.repeat = m_user_manga["repeat"]
+		user_manga.last_read = datetime.strptime(m_user_manga["date"], '%d-%m-%Y')
+		
+		user_mangas.append(user_manga)
+	
+	return {"User": [user],
+			"UserAnime": user_animes,
+			"UserManga": user_mangas}

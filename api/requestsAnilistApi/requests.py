@@ -97,6 +97,12 @@ async def fetch_user_entries_list(userId: int, mediaType: str):
     #      json.dump(formatted, f, indent=2)
     return formatted
 
+async def fetch_user(username: str):
+    user = await fetch_user_id(username)
+    user["anime"] = await fetch_user_entries_list(user["id"], "anime")
+    user["manga"] = await fetch_user_entries_list(user["id"], "manga")
+    insert_media([user_to_entries(user)])
+    return user
 
 async def fetch_list(list_name, list_query, list_param, mapper, insert):
     i = 1

@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-import random
 import os
 import numpy as np
 from sqlalchemy import create_engine, text
@@ -8,6 +7,7 @@ import logging
 
 from model_store import get as get_model_and_vec
 from requestsAnilistApi.requests import fetch_user_id
+from repository.userRepository import *
 from schemas.reco import RecommendationsIdsResponse, MediaType
 
 # Prometheus metrics :
@@ -17,6 +17,7 @@ from requestsAnilistApi.requests import (
     fetch_user_id,
     fetch_user_favorites_list,
     fetch_user_entries_list,
+    fetch_user,
 )
 
 from model_store import get as get_model_and_vec
@@ -46,29 +47,59 @@ WHERE user_id = :user_id
 """
 
 SQL_CANDIDATES_ANIME = """
-SELECT
-  a.id AS media_id,
-  a.mean_score,
-  a.favourites,
-  COALESCE(array_agg(ag.genre_name) FILTER (WHERE ag.genre_name IS NOT NULL), '{}') AS genres
-FROM anime a
-LEFT JOIN anime_genre ag ON ag.anime_id = a.id
-GROUP BY a.id, a.mean_score, a.favourites
-ORDER BY a.favourites DESC NULLS LAST
-LIMIT :n
+	SELECT
+		m.id,
+		m.mean_score,
+		m.variance_score,
+		m.favourites,
+		m.format,
+		m.country_of_origin,
+		extract(epoch from start_date) start,
+		COALESCE(array_agg(DISTINCT g.genre_name), '{}') AS genres,
+		COALESCE(array_agg(DISTINCT t.tag_id), '{}') AS tags,
+		COALESCE(array_agg(DISTINCT s.staff_id), '{}') AS staffs
+	FROM anime m 
+	LEFT JOIN user_anime u  ON u.anime_id = m.id AND u.user_id = :user_id
+	LEFT JOIN anime_genre g ON g.anime_id = m.id
+	LEFT JOIN anime_tag t   ON t.anime_id = m.id
+	LEFT JOIN anime_staff s ON s.anime_id = m.id
+    WHERE u.user_id IS NULL
+	GROUP BY
+		m.id,
+		m.mean_score,
+		m.variance_score,
+		m.favourites,
+		m.format,
+		m.country_of_origin,
+		start
 """
 
 SQL_CANDIDATES_MANGA = """
-SELECT
-  m.id AS media_id,
-  m.mean_score,
-  m.favourites,
-  COALESCE(array_agg(mg.genre_name) FILTER (WHERE mg.genre_name IS NOT NULL), '{}') AS genres
-FROM manga m
-LEFT JOIN manga_genre mg ON mg.manga_id = m.id
-GROUP BY m.id, m.mean_score, m.favourites
-ORDER BY m.favourites DESC NULLS LAST
-LIMIT :n
+    SELECT
+    m.id,
+    m.mean_score,
+    m.variance_score,
+    m.favourites,
+    m.format,
+    m.country_of_origin,
+    extract(epoch from start_date) start,
+    COALESCE(array_agg(DISTINCT g.genre_name), '{}') AS genres,
+    COALESCE(array_agg(DISTINCT t.tag_id), '{}') AS tags,
+    COALESCE(array_agg(DISTINCT s.staff_id), '{}') AS staffs
+    FROM manga m 
+    LEFT JOIN user_manga u  ON u.manga_id = m.id AND u.user_id = :user_id
+    LEFT JOIN manga_genre g ON g.manga_id = m.id
+    LEFT JOIN manga_tag t   ON t.manga_id = m.id
+    LEFT JOIN manga_staff s ON s.manga_id = m.id
+    WHERE u.user_id IS NULL
+    GROUP BY
+    m.id,
+    m.mean_score,
+    m.variance_score,
+    m.format,
+    m.country_of_origin,
+    m.favourites,
+    start
 """
 
 
@@ -109,6 +140,16 @@ async def get_user_entries(username: str, mediaType: str):
     return await fetch_user_entries_list(user["id"], mediaType)
 
 
+@router.get("/fetch/{username}")
+async def get_user_entries(username: str):
+    return await fetch_user(username)
+
+
+@router.get("/stat/{username}/{mediaType}")
+async def get_user_entries(username: str, mediaType: MediaType):
+    user = await fetch_user(username)
+    return get_user_stat(user["id"], mediaType)
+
 
 @router.get("/{username}/recommendations/{mediaType}", response_model=RecommendationsIdsResponse)
 async def get_reco_ids(username: str, mediaType: MediaType, limit: int = 12):
@@ -117,36 +158,51 @@ async def get_reco_ids(username: str, mediaType: MediaType, limit: int = 12):
     user = await fetch_user_id(username)
     anilist_user_id = int(user["id"])
   except Exception as e:
-    logging.logger.exception(f"[RECO] fetch_user_id failed for {username}: {e}")
+    logging.exception(f"[RECO] fetch_user_id failed for {username}: {e}")
     raise HTTPException(status_code=400, detail="Pseudo AniList invalide ou AniList indisponible")
 
   # 2) modèle + vec
   try:
     model, vec = get_model_and_vec(str(mediaType))
-    logging.logger.info(f"[RECO] model ok media={mediaType} n_features={len(vec.feature_names_)}")
+    logging.info(f"[RECO] model ok media={mediaType} n_features={len(vec.feature_names_)}")
   except Exception as e:
-    logging.logger.exception(f"[RECO] model_store.get failed media={mediaType}: {e}")
+    logging.exception(f"[RECO] model_store.get failed media={mediaType}: {e}")
     raise HTTPException(status_code=500, detail=f"Modèle non chargé: {e}")
 
   # 3) DB candidats non vus
   try:
     with engine.connect() as c:
       if mediaType == "anime":
-        cand_rows = c.execute(text(SQL_CANDIDATES_ANIME), {"user_id": anilist_user_id, "n": 2000}).mappings().all()
+        medias = c.execute(text(SQL_CANDIDATES_ANIME), {"user_id": anilist_user_id}).mappings().all()
       else:
-        cand_rows = c.execute(text(SQL_CANDIDATES_MANGA), {"user_id": anilist_user_id, "n": 2000}).mappings().all()
+        medias = c.execute(text(SQL_CANDIDATES_MANGA), {"user_id": anilist_user_id}).mappings().all()
   except Exception as e:
-    logging.logger.exception(f"[RECO] DB query failed: {e}")
+    logging.exception(f"[RECO] DB query failed: {e}")
     raise HTTPException(status_code=500, detail=f"Erreur DB: {e}")
 
-  if not cand_rows:
+  if not medias:
     return RecommendationsIdsResponse(username=username, mediaType=mediaType, ids=[])
 
   # 4) score + topK
-  X_dict = [build_feats(r, vec) for r in cand_rows]
+  user = get_user_stat(anilist_user_id, mediaType)
+  X_dict = []
+  for media in medias:
+      feats = {
+          "delta_mean_score": float(media["mean_score"] or 0) - float(user["mean_mean_score"] or 0),
+          "delta_variance_score": float(media["variance_score"] or 0) - float(user["mean_variance_score"] or 0),
+          "delta_favourites": float(media["favourites"] or 0) - float(user["mean_favourites"] or 0),
+          #"delta_mean_start_date": float(user["mean_start"] or 0) - float(media["start"] or 0),
+          "nb_fiting_genres": sum([1 for g in (media.get("genres") or []) if g in user["genre"]]),
+          "nb_fiting_tags": sum([1 for g in (media.get("tags") or []) if g in user["tag"]]),
+          "country_of_origin_fiting": user[media["country_of_origin"]] if media["country_of_origin"] in user else 0,
+          "format_fiting": user[media["format"]] if media["format"] in user else 0#,"nb_fiting_staffs": sum([1 for g in (media.get("staffs") or []) if g in user["staff"]])
+      }
+
+      X_dict.append(feats)
+    
   X = vec.transform(X_dict)
   proba = model.predict_proba(X)[:, 1]
   top_idx = np.argsort(-proba)[:limit]
-  ids = [int(cand_rows[i]["media_id"]) for i in top_idx]
+  ids = [int(medias[i]["id"]) for i in top_idx]
 
   return RecommendationsIdsResponse(username=username, mediaType=mediaType, ids=ids)

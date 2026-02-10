@@ -23,8 +23,7 @@ const error = ref("");
 async function go() {
   error.value = "";
   try {
-    await api.getUser(username.value);
-    router.push(`/reco/${encodeURIComponent(username.value)}`);
+    router.push(`/Reco/${encodeURIComponent(username.value)}`);
   } catch (e) {
     error.value = "Utilisateur introuvable ou API indisponible.";
   }

@@ -1,0 +1,14 @@
+artifact_uri: file:///home/cytech/Recommangations/mlruns/903682295290842520/4bf8084b0eba4561bcedaa8faa01a09d/artifacts
+end_time: 1770579878624
+entry_point_name: ''
+experiment_id: '903682295290842520'
+lifecycle_stage: active
+run_id: 4bf8084b0eba4561bcedaa8faa01a09d
+run_name: logreg-anime
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1770579876509
+status: 3
+tags: []
+user_id: cytech

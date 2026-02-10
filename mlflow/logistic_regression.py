@@ -13,6 +13,8 @@ import mlflow
 import mlflow.sklearn
 import joblib
 import tempfile
+import httpx
+
 
 
 # ======================
@@ -51,7 +53,7 @@ def log_run_to_uri(
     n_samples: int,
     acc: float,
     f1: float,
-) -> str:
+) -> dict:
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
@@ -62,7 +64,6 @@ def log_run_to_uri(
         mlflow.log_param("model", "logistic_regression")
         mlflow.log_param("n_features", int(n_features))
         mlflow.log_param("n_samples", int(n_samples))
-        mlflow.log_param("tag_min_df", int(TAG_MIN_DF))
 
         mlflow.set_tag("deploy", "prod")
         mlflow.set_tag("media", media)
@@ -70,121 +71,113 @@ def log_run_to_uri(
         mlflow.log_metric("accuracy", float(acc))
         mlflow.log_metric("f1", float(f1))
 
-        mlflow.sklearn.log_model(model, artifact_path="model")
+        # Enregistrer le modèle
+        model_uri = mlflow.sklearn.log_model(model, artifact_path="model")
 
-        # vectorizer
+        # Enregistrer le vectorizer
         with tempfile.TemporaryDirectory() as td:
             vec_path = Path(td) / "vectorizer.joblib"
             joblib.dump(vec, vec_path)
             mlflow.log_artifact(str(vec_path), artifact_path="vectorizer")
 
-        return run_id
-
-
-def load_allowed_tags(engine, media: str, top_k: int = 300) -> set:
-    if media == "ANIME":
-        q = """
-            SELECT DISTINCT ON (at.tag_id)
-                   t.name AS tag_name,
-                   at.rank
-            FROM anime_tag at
-            JOIN tag t ON t.id = at.tag_id
-            ORDER BY at.tag_id, at.rank DESC
-            LIMIT :top_k
-        """
-    else:
-        q = """
-            SELECT DISTINCT ON (mt.tag_id)
-                   t.name AS tag_name,
-                   mt.rank
-            FROM manga_tag mt
-            JOIN tag t ON t.id = mt.tag_id
-            ORDER BY mt.tag_id, mt.rank DESC
-            LIMIT :top_k
-        """
-
-    with engine.connect() as c:
-        tag_rows = c.execute(
-            text(q),
-            {"top_k": top_k}
-        ).mappings().all()
-
-    allowed = {r["tag_name"] for r in tag_rows}
-    return allowed
+        return {"run_id": run_id, "model_uri": model_uri.model_uri}
 
 
 # ======================
 # SQL QUERY
 # ======================
+
+USER_QUERY = """
+    SELECT
+        id, username
+    FROM "user"
+"""
 if MEDIA == "ANIME":
     QUERY = """
         SELECT
-          ua.user_id,
-          ua.anime_id AS media_id,
-          ua.score,
-          ua.progress,
-          ua.status,
-          a.mean_score,
-          a.favourites,
-          COALESCE(array_agg(DISTINCT ag.genre_name), '{}') AS genres,
-          COALESCE(array_agg(DISTINCT t.name), '{}') AS tags
-        FROM user_anime ua
-        JOIN anime a ON a.id = ua.anime_id
-        LEFT JOIN anime_genre ag ON ag.anime_id = a.id
-        LEFT JOIN anime_tag at ON at.anime_id = a.id
-        LEFT JOIN tag t ON t.id = at.tag_id
+          m.id,
+          m.mean_score,
+          m.variance_score,
+          m.favourites,
+          m.format,
+          m.country_of_origin,
+          extract(epoch from start_date) start,
+          COALESCE(array_agg(DISTINCT g.genre_name), '{}') AS genres,
+          COALESCE(array_agg(DISTINCT t.tag_id), '{}') AS tags,
+          COALESCE(array_agg(DISTINCT s.staff_id), '{}') AS staffs
+        FROM anime m 
+        LEFT JOIN user_anime u  ON u.anime_id = m.id
+        LEFT JOIN anime_genre g ON g.anime_id = m.id
+        LEFT JOIN anime_tag t   ON t.anime_id = m.id
+        LEFT JOIN anime_staff s ON s.anime_id = m.id
+        WHERE CASE WHEN user_id IS NOT NULL THEN true ELSE RANDOM() < 0.005 END
         GROUP BY
-          ua.user_id,
-          ua.anime_id,
-          ua.score,
-          ua.progress,
-          ua.status,
-          a.mean_score,
-          a.favourites
+          m.id,
+          m.mean_score,
+          m.variance_score,
+          m.favourites,
+          m.format,
+          m.country_of_origin,
+          start
     """
 else:
     QUERY = """
         SELECT
-          um.user_id,
-          um.manga_id AS media_id,
-          um.score,
-          um.progress,
-          um.status,
+          m.id,
           m.mean_score,
+          m.variance_score,
           m.favourites,
-          COALESCE(array_agg(DISTINCT mg.genre_name), '{}') AS genres,
-          COALESCE(array_agg(DISTINCT t.name), '{}') AS tags
-        FROM user_manga um
-        JOIN manga m ON m.id = um.manga_id
-        LEFT JOIN manga_genre mg ON mg.manga_id = m.id
-        LEFT JOIN manga_tag mt ON mt.manga_id = m.id
-        LEFT JOIN tag t ON t.id = mt.tag_id
+          m.format,
+          m.country_of_origin,
+          extract(epoch from start_date) start,
+          COALESCE(array_agg(DISTINCT g.genre_name), '{}') AS genres,
+          COALESCE(array_agg(DISTINCT t.tag_id), '{}') AS tags,
+          COALESCE(array_agg(DISTINCT s.staff_id), '{}') AS staffs
+        FROM manga m 
+        LEFT JOIN user_manga u  ON u.manga_id = m.id
+        LEFT JOIN manga_genre g ON g.manga_id = m.id
+        LEFT JOIN manga_tag t   ON t.manga_id = m.id
+        LEFT JOIN manga_staff s ON s.manga_id = m.id
+        WHERE CASE WHEN user_id IS NOT NULL THEN true ELSE RANDOM() < 0.005 END
         GROUP BY
-          um.user_id,
-          um.manga_id,
-          um.score,
-          um.progress,
-          um.status,
+          m.id,
           m.mean_score,
-          m.favourites
+          m.variance_score,
+          m.favourites,
+          m.format,
+          m.country_of_origin,
+          start
     """
 
+def get_user_stat(user_name: str, media: str):
+    with httpx.Client(timeout=600.0, transport=httpx.HTTPTransport(retries=2)) as client:
+        response = client.get(
+            f"http://localhost:8001/api/user/stat/{user_name}/"+str(media).lower(),
+            headers={"Content-Type": "application/json"},
+        )
+        response.raise_for_status()
+        payload = response.json()
+    return payload
 
 # ======================
 # LOAD DATA
 # ======================
 with engine.connect() as c:
-    rows = c.execute(text(QUERY)).mappings().all()
+    raw_users = c.execute(text(USER_QUERY)).mappings().all()
+    medias = c.execute(text(QUERY)).mappings().all()
 
-if len(rows) < 50:
-    raise RuntimeError(f"Pas assez de données pour {MEDIA} ({len(rows)} rows)")
+    # ======================
+    # PRE PROCESSING
+    # ======================
+    users = []
+    for raw_user_id in raw_users:
+        user_id = dict(raw_user_id)
 
-print(f"{MEDIA} rows loaded: {len(rows)}")
+        user = get_user_stat(user_id["username"], MEDIA)
 
-TOP_K_TAGS = int(os.getenv("TOP_K_TAGS", "300"))
-allowed_tags = load_allowed_tags(engine, MEDIA, top_k=TOP_K_TAGS)
-print(f"{MEDIA} allowed tags (top_k={TOP_K_TAGS}): {len(allowed_tags)}")
-
+        users.append(user)
+        print(user_id["username"])
+        print(user)
 
 # ======================
 # BUILD DATASET
@@ -192,31 +185,31 @@ print(f"{MEDIA} allowed tags (top_k={TOP_K_TAGS}): {len(allowed_tags)}")
 X_dict = []
 y = []
 
-for r in rows:
-    label = 1 if (
-        (r["status"] == "COMPLETED" or r["status"] == "READING") and (r["score"] is None or r["score"] >= 7)
-    ) else 0
+for user in users:
+    for media in medias:
 
-    feats = {
-        "mean_score": float(r["mean_score"] or 0),
-        "log_favourites": float(np.log1p(r["favourites"] or 0)),
-    }
+        label = 1 if media["id"] in user["have_loved"] else 0
 
-    for g in (r.get("genres") or []):
-        if g:
-            feats[f"genre_{g}"] = 1
+        feats = {
+            "delta_mean_score": float(media["mean_score"] or 0) - float(user["mean_mean_score"] or 0),
+            "delta_variance_score": float(media["variance_score"] or 0) - float(user["mean_variance_score"] or 0),
+            "delta_favourites": float(media["favourites"] or 0) - float(user["mean_favourites"] or 0),
+            #"delta_mean_start_date": float(user["mean_start"] or 0) - float(media["start"] or 0),
+            "nb_fiting_genres": sum([1 for g in (media.get("genres") or []) if g in user["genre"]]),
+            "nb_fiting_tags": sum([1 for g in (media.get("tags") or []) if g in user["tag"]]),
+            "country_of_origin_fiting": user[media["country_of_origin"]] if media["country_of_origin"] in user else 0,
+            "format_fiting": user[media["format"]] if media["format"] in user else 0
+            #, "nb_fiting_staffs": sum([1 for g in (media.get("staffs") or []) if g in user["staff"]])
+        }
 
-    for t in (r.get("tags") or []):
-        if t and t in allowed_tags:
-            feats[f"tag_{t}"] = 1
-
-    X_dict.append(feats)
-    y.append(label)
+        X_dict.append(feats)
+        y.append(label)
 
 y = np.array(y)
 
-print(f"{MEDIA} positive rate: {y.mean():.3f}")
-
+print(f"{MEDIA} nb donnee: {len(y)}")
+print(f"{MEDIA} positive rate: {y.mean():.6f}")
+print(X_dict[0])
 
 # ======================
 # VECTORIZE
@@ -256,6 +249,7 @@ print(f"{MEDIA} f1:", f1)
 # ======================
 # MLFLOW LOGGING (LOCAL + REMOTE)
 # ======================
+
 n_features = X.shape[1]
 n_samples = X.shape[0]
 
@@ -279,7 +273,7 @@ local_run_id = log_run_to_uri(
 )
 run_ids["local"] = local_run_id
 
-if REMOTE_TRACKING_URI:
+"""if REMOTE_TRACKING_URI:
     remote_run_id = log_run_to_uri(
         tracking_uri=REMOTE_TRACKING_URI,
         experiment_name=EXPERIMENT_NAME,
@@ -291,9 +285,9 @@ if REMOTE_TRACKING_URI:
         acc=acc,
         f1=f1,
     )
-    run_ids["remote"] = remote_run_id
+    run_ids["remote"] = remote_run_id"""
 
-print(f"{MEDIA} logged to LOCAL MLflow: {LOCAL_TRACKING_URI} (run_id={run_ids['local']})")
+print(f"{MEDIA} logged to LOCAL MLflow: {LOCAL_TRACKING_URI} (run_id = {run_ids['local']['run_id']}) (model_id = {run_ids['local']['model_uri']})")
 if "remote" in run_ids:
     print(f"{MEDIA} logged to REMOTE MLflow: {REMOTE_TRACKING_URI} (run_id={run_ids['remote']})")
 else:

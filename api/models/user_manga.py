@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey
 class UserManga(Base):
     __tablename__ = "user_manga"
 
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
     manga_id = Column(Integer, ForeignKey("manga.id"), primary_key=True)
     
     status = Column(String)

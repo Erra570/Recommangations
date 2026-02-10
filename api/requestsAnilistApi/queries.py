@@ -50,7 +50,7 @@ query UserMediaList(
         media {
           id
         }
-        score
+        score(format: POINT_10_DECIMAL)
         progress
         status
         repeat

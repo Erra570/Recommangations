@@ -89,13 +89,13 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.create_table('users',
+    op.create_table('user',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('username')
     )
-    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
+    op.create_index(op.f('ix_users_id'), 'user', ['id'], unique=False)
     op.create_table('anime_genres',
     sa.Column('anime_id', sa.Integer(), nullable=False),
     sa.Column('genre_id', sa.Integer(), nullable=False),
@@ -161,7 +161,7 @@ def upgrade() -> None:
     sa.Column('repeat', sa.Integer(), nullable=True),
     sa.Column('last_watched', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['anime_id'], ['anime.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('user_id', 'anime_id')
     )
     op.create_table('user_manga',
@@ -174,7 +174,7 @@ def upgrade() -> None:
     sa.Column('repeat', sa.Integer(), nullable=True),
     sa.Column('last_read', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['manga_id'], ['manga.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('user_id', 'manga_id')
     )
     # ### end Alembic commands ###
@@ -192,8 +192,8 @@ def downgrade() -> None:
     op.drop_table('anime_studio')
     op.drop_table('anime_staff')
     op.drop_table('anime_genres')
-    op.drop_index(op.f('ix_users_id'), table_name='users')
-    op.drop_table('users')
+    op.drop_index(op.f('ix_users_id'), table_name='user')
+    op.drop_table('user')
     op.drop_table('tag')
     op.drop_table('studio')
     op.drop_table('staff')
