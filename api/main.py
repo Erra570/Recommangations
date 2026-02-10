@@ -14,7 +14,7 @@ api_router = APIRouter(prefix="/api")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174", "https://erra570.github.io/"], 
+    allow_origins=["http://localhost:5174", "https://erra570.github.io", "https://between-citations-caps-another.trycloudflare.com"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
