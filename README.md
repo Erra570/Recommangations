@@ -42,3 +42,4 @@ Puis dans Dashboard -> New -> Import, déposez le fichier grafana/GrafanaDashboa
 - store already recommended animes/mangas 
 - merge the differents season of the same anime together
 - do differents sections
+- have an https domain for the back-end to be able to link it to the github-pages front
